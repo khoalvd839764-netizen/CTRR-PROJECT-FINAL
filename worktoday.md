@@ -12,8 +12,8 @@ Tài liệu hướng dẫn chi tiết công việc cho từng thành viên trong
 | **Nhật Trường** | `visualizer/draw.py` | Vẽ đồ thị & Lưu ảnh PNG bằng matplotlib | ⏳ Đang làm |
 | **Đỗ Thanh** | `core/traversal.py` | Duyệt BFS, DFS + Bảng vết chạy tay | ⏳ Đang làm |
 | **Tuấn** | `core/bipartite.py` | Kiểm tra Đồ thị 2 phía & Chu trình lẻ | ⏳ Đang làm |
-| **Linh** | `core/shortest_path.py` | Dijkstra & Bellman-Ford + Bảng ma trận | ⏳ Đang làm |
-| **Cả nhóm (Ngày 2)** | `run_demo.py` | Ghép nối và chạy Demo tổng hợp | ⏸️ Chờ 4 bạn xong |
+| **Linh** | `core/shortest_path.py` | Dijkstra & Bellman-Ford + Bảng ma trận | ✅ **ĐÃ XONG 100%** |
+| **Cả nhóm (Ngày 2)** | `run_demo.py` | Ghép nối và chạy Demo tổng hợp | ⏸️ Chờ 3 bạn còn lại |
 
 ---
 
@@ -120,49 +120,13 @@ python3 tests/test_bipartite.py
 
 # 👤 4. LINH — ĐƯỜNG ĐI NGẮN NHẤT (DIJKSTRA & BELLMAN-FORD)
 
-> **File cần mở**: `core/shortest_path.py`  
-> **Dữ liệu nhận vào từ Graph**: `g.adj`, `g.edges`, `g.n`, `start`, `end`.
-
-### 🎯 Hướng dẫn tư duy và thực hiện:
-
-#### A. Hàm `dijkstra(adj, n, start, end=None)` (Cho trọng số $\ge 0$)
-1. `dist = [float('inf')] * n`, `visited = [False] * n`, `parent = [-1] * n`, `dist[start] = 0`, `trace = []`.
-2. Lặp $n$ lần:
-   * Tìm đỉnh $u$ chưa thăm (`not visited[u]`) có `dist[u]` nhỏ nhất. Nếu `dist[u] == inf` $\implies$ break.
-   * `visited[u] = True` (chốt $u$).
-   * Lưu 1 dòng vết: `trace.append({"step": step+1, "u": u, "dist": list(dist), "parent": list(parent)})`.
-   * Nới lỏng cạnh: Với mỗi $v, w$ kề $u$:
-     * Nếu `not visited[v]` và `dist[u] + w < dist[v]`:
-       * `dist[v] = dist[u] + w`, `parent[v] = u`.
-3. Phục hồi đường đi `path`: Nếu có `end`, lần ngược `parent` từ `end` về `start` rồi đảo ngược.
-4. `return {"dist": dist, "parent": parent, "path": path, "cost": dist[end] if end is not None else None, "trace": trace}`.
-
-#### B. Hàm `bellman_ford(edges, n, start, directed=False, end=None)` (Xử lý trọng số âm)
-1. `dist = [float('inf')] * n`, `parent = [-1] * n`, `dist[start] = 0`, `trace = []`.
-2. Nếu `directed == False`: nhân đôi mỗi cạnh `(u, v, w)` thành cả `(v, u, w)`.
-3. Lặp $n-1$ vòng:
-   * `changed = False`
-   * Quét mọi cạnh `(u, v, w)`: nếu `dist[u] != inf` và `dist[u] + w < dist[v]`:
-     * `dist[v] = dist[u] + w`, `parent[v] = u`, `changed = True`.
-   * Lưu vết mảng `dist` sau mỗi vòng.
-   * Nếu `not changed`: break sớm.
-4. **Vòng thứ $n$ (kiểm tra chu trình âm)**:
-   * `has_neg = False`
-   * Quét lại cạnh: nếu vẫn còn cạnh mà `dist[u] + w < dist[v]` $\implies$ `has_neg = True`.
-5. Phục hồi `path` giống Dijkstra.
-6. `return {"dist": dist, "parent": parent, "path": path, "cost": dist[end] if end is not None else None, "has_negative_cycle": has_neg, "trace": trace}`.
-
-### 🧪 Lệnh test nhanh cho Linh:
-Mở Terminal gõ:
-```bash
-python3 tests/test_shortest_path.py
-```
+> **File đã hoàn thành**: `core/shortest_path.py` (✅ **Xong 100%**)
 
 ---
 
 # 🚀 5. BƯỚC GHÉP NỐI TOÀN BỘ (NGÀY 2) — `run_demo.py`
 
-Khi cả 4 bạn hoàn thành, Nhóm trưởng sẽ mở file `run_demo.py` và chạy lệnh tổng hợp:
+Khi cả 3 bạn còn lại (Trường, Thanh, Tuấn) hoàn thành, Nhóm trưởng sẽ mở file `run_demo.py` và chạy lệnh tổng hợp:
 ```bash
 python3 run_demo.py
 ```
