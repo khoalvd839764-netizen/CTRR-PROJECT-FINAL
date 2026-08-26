@@ -1,5 +1,90 @@
 def dijkstra(adj, n, start, end=None):
-    pass
+    dist = [float('inf')] * n
+    visited = [False] * n
+    parent = [-1] * n
+    dist[start] = 0
+    trace = []
 
+    for step in range(n):
+        u = -1
+        min_dist = float('inf')
+        for i in range(n):
+            if not visited[i] and dist[i] < min_dist:
+                min_dist = dist[i]
+                u = i
+ 
+        if u == -1 or dist[u] == float('inf'):
+            break
+ 
+        visited[u] = True
+        trace.append({"step": step + 1, "u": u, "dist": list(dist), "parent": list(parent)})
+ 
+        for v, w in adj[u]:
+            if not visited[v] and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                parent[v] = u
+ 
+    path = None
+    if end is not None:
+        cur = end
+        path = []
+        while cur != -1:
+            path.append(cur)
+            cur = parent[cur]
+        path.reverse()
+ 
+    return {
+        "dist": dist,
+        "parent": parent,
+        "path": path,
+        "cost": dist[end] if end is not None else None,
+        "trace": trace
+    }
+ 
+ 
 def bellman_ford(edges, n, start, directed=False, end=None):
-    pass
+    dist = [float('inf')] * n
+    parent = [-1] * n
+    dist[start] = 0
+    trace = []
+ 
+    if not directed:
+        edges2 = []
+        for u, v, w in edges:
+            edges2.append((u, v, w))
+            edges2.append((v, u, w))
+        edges = edges2
+ 
+    for i in range(n - 1):
+        changed = False
+        for u, v, w in edges:
+            if dist[u] != float('inf') and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                parent[v] = u
+                changed = True
+        trace.append(list(dist))
+        if not changed:
+            break
+ 
+    has_neg = False
+    for u, v, w in edges:
+        if dist[u] != float('inf') and dist[u] + w < dist[v]:
+            has_neg = True
+ 
+    path = None
+    if end is not None:
+        cur = end
+        path = []
+        while cur != -1:
+            path.append(cur)
+            cur = parent[cur]
+        path.reverse()
+ 
+    return {
+        "dist": dist,
+        "parent": parent,
+        "path": path,
+        "cost": dist[end] if end is not None else None,
+        "has_negative_cycle": has_neg,
+        "trace": trace
+    }
