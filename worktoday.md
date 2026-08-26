@@ -8,16 +8,16 @@ Tài liệu hướng dẫn chi tiết công việc cho từng thành viên trong
 
 | Thành viên | Tên file đảm nhận | Nhiệm vụ chính | Trạng thái |
 |:---|:---|:---|:---:|
-| **Nhóm trưởng (Bạn)** | `core/converter.py` & `core/graph.py` | Nền tảng dữ liệu `Graph` & Chuyển đổi 3 dạng | ✅ **ĐÃ XONG 100%** |
-| **Nhật Trường (Người B)** | `visualizer/draw.py` | Vẽ đồ thị & Lưu ảnh PNG bằng matplotlib | ⏳ Đang làm |
-| **Đỗ Thanh (Người C)** | `core/traversal.py` | Duyệt BFS, DFS + Bảng vết chạy tay | ⏳ Đang làm |
-| **Tuấn (Người D)** | `core/bipartite.py` | Kiểm tra Đồ thị 2 phía & Chu trình lẻ | ⏳ Đang làm |
-| **Linh (Người E)** | `core/shortest_path.py` | Dijkstra & Bellman-Ford + Bảng ma trận | ⏳ Đang làm |
+| **Jackie Khoa (Nhóm trưởng)** | `core/converter.py` & `core/graph.py` | Nền tảng dữ liệu `Graph` & Chuyển đổi 3 dạng | ✅ **ĐÃ XONG 100%** |
+| **Nhật Trường** | `visualizer/draw.py` | Vẽ đồ thị & Lưu ảnh PNG bằng matplotlib | ⏳ Đang làm |
+| **Đỗ Thanh** | `core/traversal.py` | Duyệt BFS, DFS + Bảng vết chạy tay | ⏳ Đang làm |
+| **Tuấn** | `core/bipartite.py` | Kiểm tra Đồ thị 2 phía & Chu trình lẻ | ⏳ Đang làm |
+| **Linh** | `core/shortest_path.py` | Dijkstra & Bellman-Ford + Bảng ma trận | ⏳ Đang làm |
 | **Cả nhóm (Ngày 2)** | `run_demo.py` | Ghép nối và chạy Demo tổng hợp | ⏸️ Chờ 4 bạn xong |
 
 ---
 
-# 👤 1. NHẬT TRƯỜNG (NGƯỜI B) — VẼ VÀ LƯU ẢNH ĐỒ THỊ
+# 👤 1. NHẬT TRƯỜNG — VẼ VÀ LƯU ẢNH ĐỒ THỊ
 
 > **File cần mở**: `visualizer/draw.py`  
 > **Dữ liệu nhận vào từ Graph**: `g.n` (số đỉnh), `g.edges` (danh sách cạnh), `g.directed` (True/False).
@@ -47,7 +47,7 @@ python3 tests/test_draw.py
 
 ---
 
-# 👤 2. ĐỖ THANH (NGƯỜI C) — THUẬT TOÁN DUYỆT BFS & DFS
+# 👤 2. ĐỖ THANH — THUẬT TOÁN DUYỆT BFS & DFS
 
 > **File cần mở**: `core/traversal.py`  
 > **Dữ liệu nhận vào từ Graph**: `g.adj` (danh sách kề), `g.n` (số đỉnh), `start` (đỉnh bắt đầu).
@@ -85,7 +85,7 @@ python3 tests/test_traversal.py
 
 ---
 
-# 👤 3. TUẤN (NGƯỜI D) — KIỂM TRA ĐỒ THỊ HAI PHÍA (BIPARTITE)
+# 👤 3. TUẤN — KIỂM TRA ĐỒ THỊ HAI PHÍA (BIPARTITE)
 
 > **File cần mở**: `core/bipartite.py`  
 > **Dữ liệu nhận vào từ Graph**: `g.adj` (danh sách kề), `g.n` (số đỉnh).
@@ -118,7 +118,7 @@ python3 tests/test_bipartite.py
 
 ---
 
-# 👤 4. LINH (NGƯỜI E) — ĐƯỜNG ĐI NGẮN NHẤT (DIJKSTRA & BELLMAN-FORD)
+# 👤 4. LINH — ĐƯỜNG ĐI NGẮN NHẤT (DIJKSTRA & BELLMAN-FORD)
 
 > **File cần mở**: `core/shortest_path.py`  
 > **Dữ liệu nhận vào từ Graph**: `g.adj`, `g.edges`, `g.n`, `start`, `end`.
@@ -166,75 +166,3 @@ Khi cả 4 bạn hoàn thành, Nhóm trưởng sẽ mở file `run_demo.py` và 
 ```bash
 python3 run_demo.py
 ```
-
----
-
-# 🐙 HƯỚNG DẪN DÙNG GIT ĐỂ LÀM VIỆC NHÓM (GIT WORKFLOW)
-
-Quy trình chuẩn: **Clone -> Tạo nhánh riêng -> Code & Test -> Push nhánh -> Tạo Pull Request (PR) -> Nhóm trưởng duyệt merge vào Main**.
-
----
-
-## 📌 DÀNH CHO 4 THÀNH VIÊN (Nhật Trường, Đỗ Thanh, Tuấn, Linh)
-
-### 🔹 Bước 1: Clone Repository về máy
-Mở Terminal trên máy tính và gõ:
-```bash
-git clone https://github.com/khoalvd839764-netizen/CTRR-PROJECT-FINAL.git
-cd CTRR-PROJECT-FINAL
-```
-
----
-
-### 🔹 Bước 2: Tạo nhánh riêng của mình
-⚠️ **TUYỆT ĐỐI KHÔNG CODE TRỰC TIẾP TRÊN NHÁNH `main`** (Nhánh main đã bật bảo vệ Branch Protection).
-
-Mỗi bạn gõ lệnh tạo nhánh riêng theo tên mình:
-* **Nhật Trường**: `git checkout -b feature/draw-nhattruong`
-* **Đỗ Thanh**: `git checkout -b feature/traversal-dothanh`
-* **Tuấn**: `git checkout -b feature/bipartite-tuan`
-* **Linh**: `git checkout -b feature/shortest-path-linh`
-
----
-
-### 🔹 Bước 3: Code và Test trên máy mình
-Mở file của bạn ra code theo hướng dẫn ở trên, sau đó chạy file test để đảm bảo code không có lỗi:
-* Nhật Trường chạy: `python3 tests/test_draw.py`
-* Đỗ Thanh chạy: `python3 tests/test_traversal.py`
-* Tuấn chạy: `python3 tests/test_bipartite.py`
-* Linh chạy: `python3 tests/test_shortest_path.py`
-
----
-
-### 🔹 Bước 4: Lưu (Commit) và Đẩy (Push) nhánh lên GitHub
-Khi test đã đạt 100%, gõ các lệnh sau để đẩy code lên:
-```bash
-# 1. Thêm các thay đổi
-git add .
-
-# 2. Tạo commit ghi rõ nội dung
-git commit -m "feat: hoàn thành module của [Tên_Bạn]"
-
-# 3. Đẩy nhánh của bạn lên GitHub
-git push origin <tên-nhánh-của-bạn>
-```
-*(Ví dụ Đỗ Thanh gõ: `git push origin feature/traversal-dothanh`)*
-
----
-
-### 🔹 Bước 5: Tạo Pull Request (PR) chờ duyệt
-1. Truy cập vào GitHub repo của nhóm: `https://github.com/khoalvd839764-netizen/CTRR-PROJECT-FINAL`
-2. Bạn sẽ thấy nút màu vàng xanh hiện lên: **"Compare & pull request"** $\to$ Nhấp vào đó.
-3. Đặt tiêu đề PR: `[Feature] Hoàn thành module <Tên_Module> - <Tên_Bạn>`
-4. Bấm nút **"Create pull request"**.
-5. Nhắn tin vào nhóm: *"Khoa ơi mình tạo PR rồi, bạn vào review giúp mình nhé!"*
-
----
-
-## 📌 DÀNH CHO NHÓM TRƯỞNG (Jackie Khoa) — DUYỆT PULL REQUEST
-
-1. Mở tab **Pull requests** trên GitHub repository.
-2. Nhấp vào PR của từng bạn gửi tới:
-   * Vào tab **Files changed** để xem các dòng code bạn đó đã viết.
-3. Nếu code chuẩn: Bấm nút **"Review changes"** $\to$ Chọn **"Approve"** $\to$ Bấm **"Merge pull request"** $\to$ **"Confirm merge"**.
-4. Lúc này code của bạn đó sẽ được gộp an toàn vào nhánh `main` mà không bao giờ bị xung đột!
