@@ -15,8 +15,8 @@ def bfs(adj, n, start):
         neighbors = sorted([v for v, w in adj.get(u, [])])
         for v in neighbors:
             if not visited[v]:
-                visited [v] = True
-                parent [v] = u
+                visited[v] = True
+                parent[v] = u
                 queue.append(v)
                 tree_edges.append((u, v))
 
@@ -39,10 +39,10 @@ def dfs(adj, n, start):
         order.append(u)
 
         trace_table.append({
-           "step": len(order),
-           "u": u,
-           "queue": [],
-           "visited": list(visited) 
+            "step": len(order),
+            "u": u,
+            "queue": [],
+            "visited": list(visited)
         })
 
         neighbors = sorted([v for v, w in adj.get(u, [])])
