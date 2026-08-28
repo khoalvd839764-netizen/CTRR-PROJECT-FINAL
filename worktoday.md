@@ -1,218 +1,133 @@
-# 📋 BẢNG PHÂN CÔNG & HƯỚNG DẪN CHI TIẾT PHẦN NÂNG CAO (NHÓM 5 THÀNH VIÊN)
+# BẢNG PHÂN CÔNG & TIẾN ĐỘ THỰC HIỆN DỰ ÁN CTRR
 
-Dự án: **CẤU TRÚC RỜI RẠC — CTRR FINAL PROJECT**  
-Nhóm trưởng: **Lê Võ Đăng Khoa (Jackie Khoa)**
+Tài liệu quản lý tiến độ và phân công công việc của nhóm 5 người.
 
 ---
 
-## 👥 BẢNG PHÂN CHIA NHIỆM VỤ
+# 📊 BẢNG CHECKLIST TIẾN ĐỘ TOÀN DỰ ÁN
 
-| STT | Thành viên | Nhiệm vụ đảm nhận | File code chính | Mục đề bài |
+## 🟢 GIAI ĐOẠN 1: PHẦN CƠ BẢN (HOÀN THÀNH 100% ✅)
+
+| Mục | Chức năng theo đề bài | File code đảm nhận | Thành viên | Trạng thái |
 |:---:|:---|:---|:---|:---:|
-| **1** | **Đỗ Thanh** | Chu trình & Đường đi Euler (Fleury + Hierholzer) | `core/euler.py`<br>`tests/test_euler.py` | **Mục 7.1 & 7.2** |
-| **2** | **Linh** | Cây khung nhỏ nhất (Prim + Kruskal với DSU) | `core/mst.py`<br>`tests/test_mst.py` | **Mục 7.3 & 7.4** |
-| **3** | **Tuấn** | Luồng cực đại & Lát cắt hẹp nhất (Ford-Fulkerson) | `core/max_flow.py`<br>`tests/test_max_flow.py` | **Mục 7.5** |
-| **4** | **Nhật Trường** | Trực quan hóa nâng cao (Vẽ Euler, MST, Mạng Luồng) | `visualizer/draw.py`<br>`tests/test_draw.py` | **Mục 7 (Vẽ hình)** |
-| **5** | **Đăng Khoa (Leader)** | Thiết kế Bài toán thực tế + Tích hợp Menu CLI + Test Suite | `data/sample_real_world.py`<br>`app/cli.py`<br>`run_demo.py` | **Mục 8 & Ghép nối** |
+| **1** | Input đồ thị & Vẽ lưu hình đồ thị | `core/graph.py`<br>`visualizer/draw.py` | **Jackie Khoa**<br>**Nhật Trường** | ✅ **XONG 100%** |
+| **2** | Chuyển đổi 3 dạng biểu diễn (Matrix ↔ List ↔ Edge) | `core/converter.py` | **Jackie Khoa** | ✅ **XONG 100%** |
+| **3** | Duyệt BFS & DFS + Bảng vết đối chiếu | `core/traversal.py` | **Đỗ Thanh** | ✅ **XONG 100%** |
+| **4** | Kiểm tra Đồ thị 2 phía (Bipartite) & Chu trình lẻ | `core/bipartite.py` | **Tuấn** | ✅ **XONG 100%** |
+| **5** | Đường đi ngắn nhất (Dijkstra & Bellman-Ford) | `core/shortest_path.py` | **Linh** | ✅ **XONG 100%** |
+| **Menu** | Ứng dụng CLI Menu điều khiển tương tác | `run_demo.py` | **Jackie Khoa** | ✅ **XONG 100%** |
+
+---
+
+## 🔴 GIAI ĐOẠN 2: PHẦN NÂNG CAO & BÀI TOÁN THỰC TẾ
+
+| Mục | Thuật toán / Nhiệm vụ theo đề bài | File đảm nhận | Thành viên | Trọng tâm giải quyết | Trạng thái |
+|:---:|:---|:---|:---|:---|:---:|
+| **7.1** | Fleury (Chu trình / Đường đi Euler) | `core/euler.py` | **Đỗ Thanh** | Kiểm tra cầu (Bridge) và đi qua mỗi cạnh đúng 1 lần | ⏳ Đang làm |
+| **7.2** | Hierholzer (Chu trình / Đường đi Euler) | `core/euler.py` | **Đỗ Thanh** | Dùng Stack nối các chu trình con $O(E)$ | ⏳ Đang làm |
+| **7.3** | Prim (Cây khung nhỏ nhất - MST) | `core/mst.py` | **Linh** | Mở rộng cây khung từ 1 đỉnh xuất phát | ⏳ Đang làm |
+| **7.4** | Kruskal (Cây khung nhỏ nhất - MST) | `core/mst.py` | **Linh** | Sắp xếp cạnh + Cấu trúc DSU (Union-Find) | ⏳ Đang làm |
+| **7.5** | Ford-Fulkerson (Max Flow & Min Cut) | `core/max_flow.py` | **Tuấn** | Tìm luồng cực đại (Edmonds-Karp) và lát cắt hẹp nhất | ⏳ Đang làm |
+| **Vẽ** | Trực quan hóa nâng cao (Euler, MST, Flow) | `visualizer/draw.py` | **Nhật Trường** | Vẽ đường Euler đánh số, tô màu MST, vẽ lát cắt Min Cut | ⏳ Đang làm |
+| **8 & Test** | Bài toán thực tế + Menu CLI + **TEST TOÀN BỘ** | `data/sample_real_world.py`<br>`app/cli.py`<br>`tests/` | **Jackie Khoa** | Bài toán thực tế, Menu CLI và **kiểm thử toàn bộ hệ thống** | ⏳ Đang làm |
 
 ---
 
 # 👤 1. ĐỖ THANH — CHU TRÌNH & ĐƯỜNG ĐI EULER (`core/euler.py`)
 
-> **Mục tiêu**: Tìm Chu trình Euler (đi qua mỗi cạnh đúng 1 lần rồi về gốc) hoặc Đường đi Euler (đi qua mỗi cạnh đúng 1 lần).
+> **File cần mở**: `core/euler.py`  
+> **Nhiệm vụ**: Cài đặt kiểm tra Euler, thuật toán Fleury (7.1) và Hierholzer (7.2).
 
-### 🎯 Các hàm cần cài đặt trong `core/euler.py`:
-
-#### 1.1 Hàm bổ trợ: `check_eulerian(adj, n, directed=False)`
-* **Mục đích**: Kiểm tra xem đồ thị có Euler hay không trước khi tìm đường.
-* **Quy tắc toán học (Vô hướng)**:
-  * Đồ thị phải liên thông (các đỉnh bậc $>0$ thuộc cùng 1 thành phần liên thông).
-  * **Chu trình Euler**: $0$ đỉnh bậc lẻ (tất cả đỉnh đều bậc chẵn).
-  * **Đường đi Euler**: đúng $2$ đỉnh bậc lẻ (bắt đầu từ 1 trong 2 đỉnh lẻ này).
-  * **Không có Euler**: nếu có $>2$ đỉnh bậc lẻ.
-* **Trả về**: `(has_euler, is_circuit, start_node)`
-
-#### 1.2 Hàm `fleury(adj, n, start=None, directed=False)` (Mục 7.1)
-* **Ý tưởng**: Đi từ đỉnh hiện tại sang đỉnh kề sao cho **không đi qua cầu (Bridge)** trừ khi không còn lựa chọn nào khác.
-* **Các bước cài đặt**:
-  1. Tạo bản sao danh sách kề `adj_copy` để xóa cạnh dần khi đi qua.
-  2. Bắt đầu từ đỉnh `u = start`.
-  3. Duyệt các đỉnh kề $v$ của $u$:
-     * Kiểm tra cạnh $(u, v)$ có phải là **Cầu** hay không (dùng DFS đếm số đỉnh liên thông trước và sau khi tạm xóa cạnh $(u, v)$).
-     * Nếu không phải cầu $\implies$ Chọn đi cạnh $(u, v)$.
-     * Nếu tất cả đều là cầu $\implies$ Bắt buộc đi cạnh duy nhất còn lại.
-  4. Xóa cạnh $(u, v)$ khỏi `adj_copy` và đặt $u = v$, thêm $(u, v)$ vào lộ trình.
-  5. Lặp lại cho đến khi hết cạnh.
-* **Trả về**: `path` (danh sách đỉnh), `edges_order` (danh sách cạnh theo thứ tự đi), `trace_table` (bảng vết bước lặp).
-
-#### 1.3 Hàm `hierholzer(adj, n, start=None, directed=False)` (Mục 7.2)
-* **Ý tưởng**: Tìm chu trình bằng cách đi sâu, khi gặp ngõ cụt thì đưa vào Stack, sau đó ghép chu trình con $\implies$ độ phức tạp tối ưu $O(E)$.
-* **Các bước cài đặt**:
-  1. Tạo `curr_path = [start]` (Stack) và `circuit = []`.
-  2. Vòng lặp `while len(curr_path) > 0:`
-     * Lấy `u = curr_path[-1]`.
-     * Nếu $u$ còn cạnh kề: lấy đỉnh $v$ kề tiếp theo, xóa cạnh $(u, v)$ khỏi đồ thị, đẩy $v$ vào `curr_path.append(v)`.
-     * Nếu $u$ hết cạnh kề (ngõ cụt): bốc ra `circuit.append(curr_path.pop())`.
-  3. Đảo ngược `circuit.reverse()` ta được Chu trình/Đường đi Euler hoàn chỉnh!
-* **Trả về**: `path`, `edges_order`, `trace_table`.
-
-### 🧪 Lệnh test cho Đỗ Thanh:
-```bash
-.venv/bin/python3 tests/test_euler.py
-```
+### 🎯 Hướng dẫn thực hiện:
+1. **Hàm `check_eulerian(adj, n)`**:
+   * Kiểm tra tính liên thông.
+   * Đếm đỉnh bậc lẻ: 0 đỉnh lẻ $\to$ Chu trình Euler; 2 đỉnh lẻ $\to$ Đường đi Euler; $>2$ đỉnh lẻ $\to$ Không có Euler.
+2. **Hàm `fleury(adj, n, start)` (Mục 7.1)**:
+   * Đi qua các cạnh, kiểm tra cạnh có phải là Cầu (Bridge) hay không bằng DFS.
+   * Không bao giờ đi qua cầu trừ khi không còn cạnh nào khác.
+3. **Hàm `hierholzer(adj, n, start)` (Mục 7.2)**:
+   * Dùng Stack `curr_path`, đi sâu khi gặp ngõ cụt thì đưa vào `circuit`.
+   * Đảo ngược `circuit` để có chu trình Euler tối ưu $O(E)$.
 
 ---
 
 # 👤 2. LINH — CÂY KHUNG NHỎ NHẤT (MST) (`core/mst.py`)
 
-> **Mục tiêu**: Tìm cây khung có tổng trọng số các cạnh là nhỏ nhất trên đồ thị vô hướng liên thông có trọng số.
+> **File cần mở**: `core/mst.py`  
+> **Nhiệm vụ**: Cài đặt class DSU, thuật toán Prim (7.3) và Kruskal (7.4).
 
-### 🎯 Các hàm cần cài đặt trong `core/mst.py`:
-
-#### 2.1 Cấu trúc dữ liệu DSU: `class DSU`
-* **Nhiệm vụ**: Quản lý các tập hợp rời nhau phục vụ thuật toán Kruskal.
-* **Phương thức**:
-  * `__init__(self, n)`: Khởi tạo `parent = [i for i in range(n)]`, `rank = [0] * n`.
-  * `find(self, i)`: Tìm gốc của phần tử $i$ với **Nén đường đi (Path Compression)**:
-    ```python
-    if self.parent[i] != i:
-        self.parent[i] = self.find(self.parent[i])
-    return self.parent[i]
-    ```
-  * `union(self, i, j)`: Hợp nhất 2 tập chứa $i$ và $j$ theo **Hạng (Union by Rank)**. Trả về `True` nếu gộp thành công, `False` nếu đã cùng tập (tránh tạo chu trình).
-
-#### 2.2 Hàm `kruskal(edges, n)` (Mục 7.4)
-* **Ý tưởng**: Sắp xếp cạnh tăng dần $\to$ Lần lượt thêm cạnh vào cây nếu không tạo chu trình (dùng DSU).
-* **Các bước cài đặt**:
-  1. Sắp xếp `edges` theo trọng số $w$ tăng dần: `sorted_edges = sorted(edges, key=lambda x: x[2])`.
-  2. Khởi tạo `dsu = DSU(n)`, `mst_edges = []`, `total_weight = 0`, `trace_table = []`.
-  3. Lần lượt duyệt từng cạnh $(u, v, w)$ trong `sorted_edges`:
-     * Nếu `dsu.union(u, v) == True`:
-       * Thêm $(u, v, w)$ vào `mst_edges`.
-       * `total_weight += w`.
-       * Ghi vết: `{"edge": (u, v), "weight": w, "action": "CHỌN", "mst_count": len(mst_edges)}`.
-     * Ngược lại (`find(u) == find(v)`):
-       * Ghi vết: `{"edge": (u, v), "weight": w, "action": "LOẠI (TẠO CHU TRÌNH)"}`.
-     * Nếu `len(mst_edges) == n - 1` $\implies$ Đã đủ $N-1$ cạnh, dừng sớm!
-* **Trả về**: `mst_edges`, `total_weight`, `trace_table`.
-
-#### 2.3 Hàm `prim(adj, n, start=0)` (Mục 7.3)
-* **Ý tưởng**: Mở rộng cây khung từ 1 đỉnh xuất phát, luôn chọn cạnh nhẹ nhất nối giữa tập đã thăm ($S$) và tập chưa thăm ($V \setminus S$).
-* **Các bước cài đặt**:
-  1. Khởi tạo `visited = [False] * n`, `visited[start] = True`.
-  2. `mst_edges = []`, `total_weight = 0`, `trace_table = []`.
-  3. Lặp $N - 1$ bước (mỗi bước kết nạp thêm 1 đỉnh mới):
-     * Tìm cạnh $(u, v, w)$ có $w$ nhỏ nhất sao cho `visited[u] == True` và `visited[v] == False`.
-     * Đánh dấu `visited[v] = True`.
-     * Thêm $(u, v, w)$ vào `mst_edges`, `total_weight += w`.
-     * Ghi vết từng bước vào `trace_table`.
-* **Trả về**: `mst_edges`, `total_weight`, `trace_table`.
-
-### 🧪 Lệnh test cho Linh:
-```bash
-.venv/bin/python3 tests/test_mst.py
-```
+### 🎯 Hướng dẫn thực hiện:
+1. **Class `DSU`**:
+   * Cài hàm `find(i)` có Path Compression.
+   * Cài hàm `union(i, j)` theo Rank (trả về True nếu gộp được, False nếu cùng tập).
+2. **Hàm `kruskal(edges, n)` (Mục 7.4)**:
+   * Sắp xếp `edges` theo trọng số tăng dần.
+   * Lần lượt duyệt từng cạnh, dùng DSU để thêm vào MST nếu không tạo chu trình cho đủ $n-1$ cạnh.
+3. **Hàm `prim(adj, n, start)` (Mục 7.3)**:
+   * Bắt đầu từ đỉnh `start`, dùng mảng `visited` liên tục chọn cạnh nhẹ nhất nối giữa tập đã thăm và chưa thăm.
 
 ---
 
 # 👤 3. TUẤN — LUỒNG CỰC ĐẠI & LÁT CẮT HẸP NHẤT (`core/max_flow.py`)
 
-> **Mục tiêu**: Tìm lưu lượng vận chuyển lớn nhất từ đỉnh Nguồn ($S$) đến đỉnh Đích ($T$) trên mạng có sức chứa (Capacity), và chỉ ra Lát cắt hẹp nhất (Min Cut).
+> **File cần mở**: `core/max_flow.py`  
+> **Nhiệm vụ**: Cài đặt thuật toán Ford-Fulkerson (Edmonds-Karp) và tìm Min Cut (7.5).
 
-### 🎯 Các hàm cần cài đặt trong `core/max_flow.py`:
-
-#### 3.1 Hàm `ford_fulkerson(edges, n, source, sink)` (Thuật toán Edmonds-Karp)
-* **Ý tưởng**: Dùng **BFS** tìm đường tăng luồng ngắn nhất trên đồ thị thặng dư (Residual Graph), tăng luồng cho đến khi không còn đường đi từ $S \to T$.
-* **Các bước cài đặt**:
-  1. Xây dựng ma trận dung lượng `capacity[n][n]` và ma trận luồng thặng dư `residual[n][n] = capacity[n][n]`.
-  2. Khởi tạo `max_flow = 0`, `trace_table = []`.
-  3. **Vòng lặp tăng luồng**:
-     * Dùng BFS tìm đường đi từ `source` đến `sink` trên `residual`:
-       * Nếu tìm thấy đường đi $P$ qua mảng `parent`:
-         * Tính lượng luồng có thể tăng thêm: $\Delta f = \min_{(u, v) \in P} \text{residual}[u][v]$.
-         * Cập nhật đồ thị thặng dư với mọi cạnh $(u, v) \in P$:
-           * $\text{residual}[u][v] -= \Delta f$ (giảm chiều xuôi).
-           * $\text{residual}[v][u] += \Delta f$ (tăng chiều ngược).
-         * `max_flow += Δf`.
-         * Ghi vết: `{"step": k, "augmenting_path": P, "bottleneck": Δf, "current_flow": max_flow}`.
-       * Nếu không còn đường đi nào từ `source` tới `sink` $\implies$ Dừng vòng lặp!
-  4. **Tìm Lát cắt hẹp nhất (Min Cut)**:
-     * Dùng BFS/DFS từ `source` trên đồ thị thặng dư `residual`:
-       * Tập $S$: Tất cả các đỉnh mà `source` có thể đi tới được.
-       * Tập $T$: Các đỉnh còn lại ($V \setminus S$).
-       * Cạnh thuộc lát cắt hẹp nhất: Các cạnh gốc $(u, v)$ có $u \in S$ và $v \in T$.
-* **Trả về**: `max_flow`, `flow_matrix`, `min_cut_edges`, `cut_sets (S, T)`, `trace_table`.
-
-### 🧪 Lệnh test cho Tuấn:
-```bash
-.venv/bin/python3 tests/test_max_flow.py
-```
+### 🎯 Hướng dẫn thực hiện:
+1. **Hàm `ford_fulkerson(edges, n, source, sink)`**:
+   * Dựng ma trận luồng thặng dư `residual[n][n]`.
+   * Dùng BFS tìm đường tăng luồng ngắn nhất từ `source` đến `sink`.
+   * Tăng luồng $\Delta f = \min(\text{residual})$ và cập nhật đồ thị thặng dư.
+2. **Tìm Lát cắt hẹp nhất (Min Cut)**:
+   * Dùng BFS/DFS từ `source` trên `residual` để chia thành 2 tập $(S, T)$.
+   * Lấy các cạnh gốc nối từ $S \to T$.
 
 ---
 
 # 👤 4. NHẬT TRƯỜNG — TRỰC QUAN HÓA NÂNG CAO (`visualizer/draw.py`)
 
-> **Mục tiêu**: Mở rộng các hàm vẽ hình đồ thị chuyên biệt cho các thuật toán nâng cao và lưu ra file ảnh PNG chất lượng cao.
+> **File cần mở**: `visualizer/draw.py`  
+> **Nhiệm vụ**: Viết các hàm vẽ hình đồ thị cho Euler, MST, và Mạng luồng Max Flow.
 
-### 🎯 Các hàm cần bổ sung trong `visualizer/draw.py`:
-
-#### 4.1 Hàm `draw_euler(g, path, edges_order, filename="euler_path.png")`
-* Vẽ đồ thị gốc màu xám mờ.
-* Tô màu nổi bật các cạnh theo thứ tự đi Euler (có đánh số thứ tự chặng bay/bước đi $1, 2, 3...$ trên cạnh).
-* Đỉnh xuất phát tô màu Xanh Lá, đỉnh kết thúc tô màu Đỏ.
-
-#### 4.2 Hàm `draw_mst(g, mst_edges, total_weight, filename="mst_result.png")`
-* Các cạnh thuộc cây khung MST tô màu **Xanh Dương Đậm nét to** (lineWidth = 2.5) và ghi rõ trọng số $w$.
-* Các cạnh bị loại (không thuộc MST) vẽ nét đứt mờ màu xám.
-* Hiển thị dòng tiêu đề: `Cây khung nhỏ nhất MST — Tổng trọng số = total_weight`.
-
-#### 4.3 Hàm `draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filename="max_flow.png")`
-* Hiển thị nhãn trên mỗi cạnh dạng `flow / capacity` (ví dụ: `8/10`).
-* Đỉnh Nguồn ($S$) tô màu Xanh Dương, Đỉnh Đích ($T$) tô màu Đỏ Cam.
-* Các cạnh thuộc Lát cắt hẹp nhất (**Min Cut**) tô màu ĐỎ nét đậm hoặc nét đứt phân cách 2 tập đỉnh.
-
-### 🧪 Lệnh test cho Nhật Trường:
-```bash
-.venv/bin/python3 tests/test_draw.py
-```
+### 🎯 Hướng dẫn thực hiện:
+1. **Hàm `draw_euler(g, path, edges_order, filename)`**: Vẽ đồ thị và đánh số thứ tự từng bước đi $1, 2, 3...$ trên các cạnh.
+2. **Hàm `draw_mst(g, mst_edges, total_weight, filename)`**: Tô màu xanh đậm nét to các cạnh thuộc MST, các cạnh bị loại vẽ nét đứt mờ.
+3. **Hàm `draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filename)`**: Hiển thị nhãn `flow/capacity` trên mỗi cạnh và vạch cắt Min-Cut.
 
 ---
 
-# 👤 5. ĐĂNG KHOA (NHÓM TRƯỞNG) — BÀI TOÁN THỰC TẾ & TÍCH HỢP HỆ THỐNG
+# 👤 5. JACKIE KHOA (LEADER) — BÀI TOÁN THỰC TẾ, MENU CLI & TEST TOÀN BỘ
 
-### 🎯 Nhiệm vụ của Nhóm trưởng:
+> **File đảm nhận**: `data/sample_real_world.py`, `app/cli.py`, `run_demo.py`, `tests/`  
+> **Trách nhiệm**: Nhóm trưởng chịu trách nhiệm **kiểm thử toàn bộ hệ thống**, tích hợp và giải quyết bài toán thực tế.
 
-#### 5.1 Thiết kế Bài toán Thực tế (Mục 8 Đề bài)
-* **Chủ đề**: **Tối ưu hóa Tuyến Xe Gom Rác & Quét Đường Đô Thị (Urban Sanitation Vehicle Routing)** dùng **Thuật toán Euler (Hierholzer/Fleury)**.
-  * Hoặc **Tối ưu mạng lưới cấp nước đô thị** dùng **MST (Kruskal/Prim)**.
-* **Xây dựng file dữ liệu**: `data/sample_real_world.py` (Bản đồ các tuyến phố thực tế có tọa độ, tên đường, độ dài).
-* **Mô tả 4 yếu tố bắt buộc**:
-  1. *Bài toán đặt ra là gì?* (Xe quét đường cần đi qua tất cả các tuyến phố đúng 1 lần để tiết kiệm xăng dầu và thời gian).
-  2. *Đỉnh (Node) là gì?* (Các ngã ba, ngã tư giao lộ).
-  3. *Cạnh (Edge) là gì?* (Các đoạn đường phố).
-  4. *Trọng số (Weight) là gì?* (Chiều dài đoạn đường tính bằng mét).
-  5. *Kết quả*: Tìm ra lộ trình hoàn hảo không lặp lại tuyến đường nào.
-
-#### 5.2 Tích hợp toàn bộ vào Menu CLI (`app/cli.py`)
-* Ghép các lựa chọn Menu nâng cao:
-  * `[7.1]` Tìm chu trình / đường đi Euler bằng Fleury
-  * `[7.2]` Tìm chu trình / đường đi Euler bằng Hierholzer
-  * `[7.3]` Tìm cây khung nhỏ nhất bằng Prim
-  * `[7.4]` Tìm cây khung nhỏ nhất bằng Kruskal (DSU)
-  * `[7.5]` Tìm luồng cực đại & Lát cắt hẹp nhất bằng Ford-Fulkerson
-  * `[8]` Chạy kịch bản Bài toán thực tế
-* In Bảng ma trận / Bảng vết bước lặp chuẩn chỉ để sinh viên đối chiếu khi làm bài thi trên giấy.
-
-#### 5.3 Quản lý bộ Unit Tests tự động (`tests/`)
-* Viết đầy đủ assertion cho `test_euler.py`, `test_mst.py`, `test_max_flow.py`.
-* Chạy kiểm thử tổng thể `pytest tests/` đảm bảo 100% test pass.
+### 🎯 Nhiệm vụ cụ thể của Nhóm trưởng:
+1. **Bài toán thực tế (Mục 8)**: Xây dựng dữ liệu và giải quyết bài toán *Tối ưu lộ trình xe quét đường / gom rác đô thị* (hoặc mạng cấp nước).
+2. **Ghép Menu CLI (`app/cli.py`)**: Tích hợp các lựa chọn 7.1 $\to$ 7.5 và Mục 8 vào Menu chính, xuất Bảng vết bước lặp.
+3. **Kiểm thử toàn diện (`tests/`)**:
+   * Viết và chạy test kiểm tra thuật toán Euler của Thanh (`tests/test_euler.py`).
+   * Viết và chạy test kiểm tra thuật toán MST của Linh (`tests/test_mst.py`).
+   * Viết và chạy test kiểm tra thuật toán Max Flow của Tuấn (`tests/test_max_flow.py`).
+   * Viết và chạy test kiểm tra hàm vẽ hình của Nhật Trường (`tests/test_draw.py`).
+   * Chạy kiểm thử tự động toàn bộ test suite (`pytest tests/`) nghiệm thu dự án.
 
 ---
 
-## 🚀 QUY TRÌNH PHỐI HỢP GIT CHO CẢ NHÓM:
-Mỗi bạn tạo 1 nhánh riêng để code, sau khi test xong thì tạo Pull Request gộp vào `main`:
-* Đỗ Thanh: `git checkout -b feature/euler-dothanh`
-* Linh: `git checkout -b feature/mst-linh`
-* Tuấn: `git checkout -b feature/maxflow-tuan`
-* Nhật Trường: `git checkout -b feature/draw-advanced-nhattuong`
-* Đăng Khoa: `git checkout -b feature/real-world-cli-dangkhoa`
+# 🚀 CÁCH CHẠY VÀ KIỂM THỬ HỆ THỐNG (DÀNH CHO NHÓM TRƯỞNG)
+
+1. **Chạy Menu tương tác**:
+   ```bash
+   .venv/bin/python3 run_demo.py
+   ```
+
+2. **Chạy kiểm thử toàn bộ các bài test**:
+   ```bash
+   .venv/bin/python3 tests/test_foundation.py
+   .venv/bin/python3 tests/test_traversal.py
+   .venv/bin/python3 tests/test_bipartite.py
+   .venv/bin/python3 tests/test_shortest_path.py
+   .venv/bin/python3 tests/test_euler.py
+   .venv/bin/python3 tests/test_mst.py
+   .venv/bin/python3 tests/test_max_flow.py
+   .venv/bin/python3 tests/test_draw.py
+   ```
