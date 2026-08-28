@@ -1,76 +1,88 @@
-# BẢNG PHÂN CÔNG & TIẾN ĐỘ THỰC HIỆN DỰ ÁN CTRR
+# 📋 KẾ HOẠCH TRIỂN KHAI PHẦN NÂNG CAO — CTRR FINAL PROJECT
 
-Tài liệu hướng dẫn chi tiết công việc cho từng thành viên trong nhóm 5 người.
-
----
-
-# 📊 BẢNG TIẾN ĐỘ & PHÂN CÔNG NHIỆM VỤ
-
-| Thành viên | Tên file đảm nhận | Nhiệm vụ chính | Trạng thái |
-|:---|:---|:---|:---:|
-| **Jackie Khoa (Nhóm trưởng)** | `core/converter.py` & `core/graph.py` | Nền tảng dữ liệu `Graph` & Chuyển đổi 3 dạng | ✅ **ĐÃ XONG 100%** |
-| **Nhật Trường** | `visualizer/draw.py` | Vẽ đồ thị & Lưu ảnh PNG bằng matplotlib | ✅ **ĐÃ XONG 100%** |
-| **Đỗ Thanh** | `core/traversal.py` | Duyệt BFS, DFS + Bảng vết chạy tay | ✅ **ĐÃ XONG 100%** |
-| **Tuấn** | `core/bipartite.py` | Kiểm tra Đồ thị 2 phía & Chu trình lẻ | ⏳ Đang làm |
-| **Linh** | `core/shortest_path.py` | Dijkstra & Bellman-Ford + Bảng ma trận | ✅ **ĐÃ XONG 100%** |
-| **Cả nhóm (Ngày 2)** | `run_demo.py` | Ghép nối và chạy Demo tổng hợp | ⏸️ Chờ Tuấn xong |
+Tài liệu chi tiết các đầu việc, thứ tự thực hiện và phân công cho **Phần Nâng Cao (Mục 7 & Mục 8)**.
 
 ---
 
-# 👤 1. NHẬT TRƯỜNG — VẼ VÀ LƯU ẢNH ĐỒ THỊ
+## 📊 SƠ ĐỒ PHỤ THUỘC & THỨ TỰ THỰC HIỆN
 
-> **File đã hoàn thành**: `visualizer/draw.py` (✅ **Xong 100%**)
-
----
-
-# 👤 2. ĐỖ THANH — THUẬT TOÁN DUYỆT BFS & DFS
-
-> **File đã hoàn thành**: `core/traversal.py` (✅ **Xong 100%**)
-
----
-
-# 👤 3. TUẤN — KIỂM TRA ĐỒ THỊ HAI PHÍA (BIPARTITE)
-
-> **File cần mở**: `core/bipartite.py`  
-> **Dữ liệu nhận vào từ Graph**: `g.adj` (danh sách kề), `g.n` (số đỉnh).
-
-### 🎯 Hướng dẫn tư duy và thực hiện:
-
-#### Hàm `check_bipartite(adj, n)`
-1. Tạo mảng màu `color = [0] * n` (`0`: chưa tô, `1`: màu Đỏ, `-1`: màu Xanh) và `parent = [-1] * n`.
-2. Lặp qua tất cả các đỉnh `for i in range(n):` (xử lý cả đồ thị không liên thông):
-   * Nếu `color[i] == 0`:
-     * Gán `color[i] = 1`, `queue = [i]`.
-     * Vòng lặp BFS `while queue:`
-       * `u = queue.pop(0)`.
-       * Với mỗi đỉnh $v$ kề $u$ (`for v, w in adj.get(u, []):`):
-         * **Nếu `color[v] == 0` (chưa tô)**: gán màu ngược lại `color[v] = -color[u]`, `parent[v] = u`, `queue.append(v)`.
-         * **Nếu `color[v] == color[u]` (XUNG ĐỘT MÀU!)**:
-           * Đồ thị KHÔNG là 2 phía.
-           * Lần ngược `parent` từ $u$ và $v$ về gốc chung để trích xuất danh sách đỉnh của **Chu trình lẻ**.
-           * `return {"is_bipartite": False, "odd_cycle": [danh_sách_đỉnh]}`.
-3. Nếu tô xong toàn bộ mà không xung đột:
-   * Tập 1 (Đỏ): `v1 = [i for i in range(n) if color[i] == 1]`.
-   * Tập 2 (Xanh): `v2 = [i for i in range(n) if color[i] == -1]`.
-   * `return {"is_bipartite": True, "v1": v1, "v2": v2, "colors": {i: ('red' if color[i]==1 else 'blue') for i in range(n)}}`.
-
-### 🧪 Lệnh test nhanh cho Tuấn:
-Mở Terminal gõ:
-```bash
-python3 tests/test_bipartite.py
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│              GIAI ĐOẠN 1: TRIỂN KHAI CÁC MODULE CORE ĐỘC LẬP            │
+│                     (LÀM SONG SONG 100% CÙNG LÚC)                       │
+│                                                                         │
+│  [Nhánh A: Euler]       [Nhánh B: MST]       [Nhánh C: Max Flow]       │
+│   • Fleury (7.1)         • Prim (7.3)         • Ford-Fulkerson (7.5)    │
+│   • Hierholzer (7.2)     • Kruskal DSU (7.4)  • Min Cut (7.5)           │
+│   • test_euler.py        • test_mst.py        • test_max_flow.py        │
+│                                                                         │
+│             [Nhánh D: Kịch bản & Dữ liệu Bài toán thực tế Mục 8]        │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│              GIAI ĐOẠN 2: TÍCH HỢP TRỰC QUAN HÓA & MENU CLI             │
+│                 (BẮT BUỘC SAU KHI HOÀN TẤT GIAI ĐOẠN 1)                 │
+│                                                                         │
+│   • visualizer/draw.py: Thêm hàm vẽ Euler, MST, Mạng Luồng & Lát Cắt   │
+│   • app/cli.py: Ghép Menu chọn 7.1 -> 7.5 và Mục 8, xuất Bảng vết       │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│             GIAI ĐOẠN 3: NGHIỆM THU & BÁO CÁO TOÀN DIỆN CUỐI CÙNG       │
+│                                                                         │
+│   • Chạy kịch bản Bài toán thực tế Mục 8 trực tiếp từ Menu CLI          │
+│   • Chạy toàn bộ Test Suite tự động (pytest tests/) đảm bảo pass 100%   │
+│   • Cập nhật báo cáo tiến độ nộp bài (TIEN_DO.md / README.md)           │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-# 👤 4. LINH — ĐƯỜNG ĐI NGẮN NHẤT (DIJKSTRA & BELLMAN-FORD)
+## 📝 CHECKLIST CHI TIẾT TỪNG GIAI ĐOẠN
 
-> **File đã hoàn thành**: `core/shortest_path.py` (✅ **Xong 100%**)
+### 🟢 GIAI ĐOẠN 1: CÁC MODULE CORE ĐỘC LẬP (LÀM SONG SONG ĐƯỢC)
+
+| # | Hạng mục công việc | File đảm nhận | Nhiệm vụ cụ thể | Trạng thái |
+|:---:|:---|:---|:---|:---:|
+| **1.1** | **Chu trình & Đường đi Euler** | `core/euler.py`<br>`tests/test_euler.py` | • Kiểm tra điều kiện tồn tại Euler (tính liên thông & bậc đỉnh).<br>• Cài đặt **7.1 Fleury** (tìm cầu và duyệt).<br>• Cài đặt **7.2 Hierholzer** (dùng Stack nối chu trình con). | ⏳ Chưa làm |
+| **1.2** | **Cây khung nhỏ nhất (MST)** | `core/mst.py`<br>`tests/test_mst.py` | • Cài đặt **7.3 Prim** (mở rộng cây khung từ 1 đỉnh).<br>• Cài đặt class **DSU** (Find có Path Compression + Union by Rank).<br>• Cài đặt **7.4 Kruskal** (sắp xếp cạnh + DSU). | ⏳ Chưa làm |
+| **1.3** | **Luồng cực đại & Lát cắt** | `core/max_flow.py`<br>`tests/test_max_flow.py` | • Cài đặt **7.5 Ford-Fulkerson (Edmonds-Karp)** dùng BFS tìm đường tăng luồng.<br>• Tìm tập lát cắt hẹp nhất **Min Cut** $(S, T)$ trên đồ thị thặng dư. | ⏳ Chưa làm |
+| **1.4** | **Thiết kế Bài toán thực tế (Mục 8)** | `data/sample_real_world.py`<br>`docs/real_world_spec.md` | • Xác định bài toán thực tế (ví dụ: Mạng cấp nước đô thị / Thu gom rác / Điều phối vận tải).<br>• Định nghĩa rõ: Node là gì, Edge là gì, Trọng số là gì, Mục tiêu là gì.<br>• Chuẩn bị dataset đồ thị thực tế. | ⏳ Chưa làm |
 
 ---
 
-# 🚀 5. BƯỚC GHÉP NỐI TOÀN BỘ (NGÀY 2) — `run_demo.py`
+### 🟡 GIAI ĐOẠN 2: TÍCH HỢP TRỰC QUAN HÓA & MENU CLI (LÀM SAU KHI CÓ CORE)
 
-Khi Tuấn hoàn thành, Nhóm trưởng sẽ mở file `run_demo.py` và chạy lệnh tổng hợp:
+| # | Hạng mục công việc | File đảm nhận | Nhiệm vụ cụ thể | Trạng thái |
+|:---:|:---|:---|:---|:---:|
+| **2.1** | **Mở rộng Trực quan hóa đồ thị** | `visualizer/draw.py` | • `draw_euler_path()`: Vẽ chu trình Euler có đánh số thứ tự từng bước.<br>• `draw_mst()`: Tô màu nổi bật các cạnh thuộc cây khung MST.<br>• `draw_max_flow()`: Vẽ mạng luồng hiển thị `flow/capacity` và vạch cắt Min-Cut. | ⏳ Chưa làm |
+| **2.2** | **Tích hợp Menu CLI & Bảng vết** | `app/cli.py` | • Thêm các lựa chọn 7.1, 7.2, 7.3, 7.4, 7.5 vào Menu chính.<br>• Xuất Bảng vết bước lặp chi tiết để đối chiếu bài làm tay.<br>• Tự động gọi hàm vẽ hình và lưu file ảnh kết quả. | ⏳ Chưa làm |
+
+---
+
+### 🔴 GIAI ĐOẠN 3: NGHIỆM THU & BÁO CÁO (LÀM CUỐI CÙNG)
+
+| # | Hạng mục công việc | File đảm nhận | Nhiệm vụ cụ thể | Trạng thái |
+|:---:|:---|:---|:---|:---:|
+| **3.1** | **Chạy thử nghiệm Bài toán thực tế** | `app/cli.py`<br>`run_demo.py` | • Nạp dữ liệu thực tế Mục 8 và chạy trực tiếp từ giao diện CLI.<br>• Xuất file ảnh kết quả phân tích thực tế. | ⏳ Chưa làm |
+| **3.2** | **Kiểm thử toàn bộ hệ thống (Unit Tests)** | `tests/` | • Chạy `pytest tests/` đảm bảo 100% test cases (Cơ bản + Nâng cao) đều pass. | ⏳ Chưa làm |
+| **3.3** | **Cập nhật Báo cáo & Tài liệu** | `TIEN_DO.md`<br>`README.md` | • Cập nhật bảng phân công, tiến độ hoàn thành và hướng dẫn sử dụng. | ⏳ Chưa làm |
+
+---
+
+## 🎯 CÁC LỆNH CHẠY KIỂM THỬ KHI HOÀN THÀNH
+
 ```bash
+# 1. Chạy ứng dụng Menu chính:
 python3 run_demo.py
+
+# 2. Chạy kiểm thử từng module nâng cao:
+python3 tests/test_euler.py
+python3 tests/test_mst.py
+python3 tests/test_max_flow.py
+
+# 3. Chạy toàn bộ test suite:
+pytest tests/
 ```
