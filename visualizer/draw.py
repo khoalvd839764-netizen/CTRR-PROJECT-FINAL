@@ -5,58 +5,35 @@ import matplotlib.pyplot as plt
 
 
 def compute_smart_layout(n):
-    """
-    Tự động tính toán tọa độ các đỉnh theo bố cục đa tầng đồng tâm (Concentric Rings)
-    để các đỉnh không bao giờ bị đè lên nhau, hình vẽ thoáng đãng và đẹp mắt nhất.
-    """
     coords = {}
-    
-    # 1. Đồ thị nhỏ (<= 8 đỉnh): 1 vòng tròn đơn
     if n <= 8:
         R = 10
         for i in range(n):
-            theta = (2 * math.pi * i) / n
+            theta = (2 * math.pi * i) / n if n > 0 else 0
             coords[i] = (R * math.cos(theta), R * math.sin(theta))
         return coords, R, 0.9, 11, 9, (8, 8)
-
-    # 2. Đồ thị 15 đỉnh: Bố cục 2 vòng đồng tâm (10 đỉnh vòng ngoài + 5 đỉnh vòng trong)
     elif n == 15:
         R_out = 16
         R_in = 8
-        # 10 đỉnh vòng ngoài (0 -> 9)
         for i in range(10):
             theta = (2 * math.pi * i) / 10
             coords[i] = (R_out * math.cos(theta), R_out * math.sin(theta))
-        # 5 đỉnh vòng trong (10 -> 14)
         for i in range(5):
-            theta = (2 * math.pi * i) / 5 + (math.pi / 10)  # Lệch góc một chút cho đẹp
+            theta = (2 * math.pi * i) / 5 + (math.pi / 10)
             coords[10 + i] = (R_in * math.cos(theta), R_in * math.sin(theta))
         return coords, R_out, 0.85, 10, 8.5, (10, 10)
-
-    # 3. Đồ thị 30 đỉnh: Bố cục 3 tầng đô thị (16 đỉnh ngoài + 10 đỉnh giữa + 4 đỉnh lõi)
     elif n == 30:
-        R1 = 22  # Tầng 1: Vòng ngoài cùng
-        R2 = 13  # Tầng 2: Vòng giữa
-        R3 = 5.5 # Tầng 3: Cụm lõi trung tâm
-        
-        # 16 đỉnh vòng ngoài (0 -> 15)
+        R1, R2, R3 = 22, 13, 5.5
         for i in range(16):
             theta = (2 * math.pi * i) / 16
             coords[i] = (R1 * math.cos(theta), R1 * math.sin(theta))
-            
-        # 10 đỉnh vòng giữa (16 -> 25)
         for i in range(10):
             theta = (2 * math.pi * i) / 10 + (math.pi / 16)
             coords[16 + i] = (R2 * math.cos(theta), R2 * math.sin(theta))
-            
-        # 4 đỉnh cụm lõi (26 -> 29)
         for i in range(4):
             theta = (2 * math.pi * i) / 4 + (math.pi / 8)
             coords[26 + i] = (R3 * math.cos(theta), R3 * math.sin(theta))
-            
         return coords, R1, 0.75, 8.5, 7.5, (13, 13)
-
-    # 4. Đồ thị số đỉnh bất kỳ: Tự động chia tầng thông minh
     else:
         num_layers = max(1, math.ceil(n / 10))
         R_max = max(12, n * 0.7)
@@ -73,10 +50,37 @@ def compute_smart_layout(n):
         return coords, R_max, 0.7, 9, 8, (11, 11)
 
 
+def _draw_base_nodes(ax, coords, node_radius, node_font, colors=None, labels=None, default_color="#2E7D32"):
+    if colors is None:
+        colors = {}
+    if labels is None:
+        labels = {}
+
+    for i, (x, y) in coords.items():
+        node_color = colors.get(i, default_color)
+        circle = plt.Circle((x, y), node_radius, color=node_color, ec="#1B5E20", lw=1.2, zorder=5)
+        ax.add_patch(circle)
+
+        text_label = labels.get(i, str(i))
+        ax.text(x, y, text_label, color="white", fontweight="bold", fontsize=node_font, ha="center", va="center", zorder=6)
+
+
+def _handle_save_and_show(fig, filename, show):
+    plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor="#fafafa")
+    if show:
+        try:
+            if os.name == "posix":
+                cmd = "open" if "darwin" in os.sys.platform else "xdg-open"
+                subprocess.Popen([cmd, filename], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif os.name == "nt":
+                os.startfile(filename)
+        except Exception:
+            plt.show(block=False)
+            plt.pause(0.5)
+    plt.close(fig)
+
+
 def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highlight=None, colors=None, show=True):
-    # =========================================================================
-    # [1. NHẬN DIỆN THAM SỐ ĐẦU VÀO ĐA HÌNH]
-    # =========================================================================
     if hasattr(g_or_n, "n"):
         n = g_or_n.n
         edges_list = getattr(g_or_n, "edges", [])
@@ -91,25 +95,16 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
     if colors is None:
         colors = {}
 
-    # =========================================================================
-    # [⭐ NÂNG CẤP: TÍNH TỌA ĐỘ ĐA TẦNG THÔNG MINH - CHỐNG ĐÈ 100%]
-    # =========================================================================
     coords, max_R, node_radius, node_font, weight_font, fig_size = compute_smart_layout(n)
+    fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
+    ax.set_facecolor("#fafafa")
 
-    fig, ax = plt.subplots(figsize=fig_size, facecolor='#fafafa')
-    ax.set_facecolor('#fafafa')
-
-    # =========================================================================
-    # [2. VẼ CÁC CẠNH VÀ MŨI TÊN CÓ HƯỚNG]
-    # =========================================================================
     for edge in edges_list:
         u, v = edge[0], edge[1]
         w = edge[2] if len(edge) > 2 else 1
-
         x_u, y_u = coords[u]
         x_v, y_v = coords[v]
 
-        # Kiểm tra highlight
         is_highlighted = (
             (u, v) in highlight
             or (u, v, w) in highlight
@@ -119,8 +114,6 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
         edge_color = "#E53935" if is_highlighted else "#78909C"
         line_width = 2.8 if is_highlighted else 1.1
         z_order = 3 if is_highlighted else 1
-        
-        # Độ cong nhẹ cho mũi tên
         rad = 0.07 if is_directed else 0.0
 
         if not is_directed:
@@ -143,71 +136,139 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
                 alpha=0.9,
             )
 
-        # Ghi nhãn trọng số
         if w != 1:
-            mid_x = (x_u + x_v) / 2
-            mid_y = (y_u + y_v) / 2
-            
-            # Căn chỉnh vị trí nhãn để không đè lên cạnh khác
+            mid_x, mid_y = (x_u + x_v) / 2, (y_u + y_v) / 2
             ax.text(
-                mid_x,
-                mid_y,
-                str(w),
-                fontsize=weight_font,
-                fontweight="bold",
+                mid_x, mid_y, str(w),
+                fontsize=weight_font, fontweight="bold",
                 color="#1565C0" if not is_highlighted else "#B71C1C",
-                ha="center",
-                va="center",
+                ha="center", va="center",
                 bbox=dict(boxstyle="round,pad=0.15", facecolor="#ffffff", edgecolor="#CFD8DC", alpha=0.92, lw=0.6),
                 zorder=4,
             )
 
-    # =========================================================================
-    # [3. VẼ CÁC ĐỈNH HÌNH TRÒN]
-    # =========================================================================
-    for i in range(n):
-        x, y = coords[i]
-        node_color = colors.get(i, "#2E7D32")
-
-        circle = plt.Circle((x, y), node_radius, color=node_color, ec="#1B5E20", lw=1.2, zorder=5)
-        ax.add_patch(circle)
-
-        ax.text(
-            x,
-            y,
-            str(i),
-            color="white",
-            fontweight="bold",
-            fontsize=node_font,
-            ha="center",
-            va="center",
-            zorder=6,
-        )
-
-    # =========================================================================
-    # [4. CĂN BIÊN MÀN HÌNH TỰ ĐỘNG]
-    # =========================================================================
+    _draw_base_nodes(ax, coords, node_radius, node_font, colors=colors, default_color="#2E7D32")
     margin = max_R * 1.15
     ax.set_aspect("equal")
     ax.set_xlim(-margin, margin)
     ax.set_ylim(-margin, margin)
     plt.axis("off")
+    _handle_save_and_show(fig, filename, show)
 
-    # 5. Lưu file ảnh chất lượng cao
-    plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor='#fafafa')
-    
-    # 6. Tự động hiển thị ảnh lên màn hình
-    if show:
-        try:
-            if os.name == 'posix':
-                cmd = 'open' if 'darwin' in os.sys.platform else 'xdg-open'
-                subprocess.Popen([cmd, filename], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            elif os.name == 'nt':
-                os.startfile(filename)
-        except Exception:
-            plt.show(block=False)
-            plt.pause(0.5)
-
-    plt.close(fig)
 
 draw_graph = draw
+
+
+def draw_euler(g, path, edges_order, filename="euler_path.png", show=True):
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
+    ax.set_facecolor("#fafafa")
+
+    for edge in g.edges:
+        u, v = edge[0], edge[1]
+        xu, yu, xv, yv = coords[u][0], coords[u][1], coords[v][0], coords[v][1]
+        if not g.directed:
+            ax.plot([xu, xv], [yu, yv], color="#cfd8dc", linewidth=1.5, zorder=1)
+        else:
+            ax.annotate("", xy=(xv, yv), xytext=(xu, yu), arrowprops=dict(arrowstyle="->", color="#cfd8dc", lw=1.5, shrinkA=12, shrinkB=12, mutation_scale=12), zorder=1)
+
+    for step, edge in enumerate(edges_order, 1):
+        u, v = edge[0], edge[1]
+        xu, yu, xv, yv = coords[u][0], coords[u][1], coords[v][0], coords[v][1]
+        if not g.directed:
+            ax.plot([xu, xv], [yu, yv], color="#ff5722", linewidth=2.5, zorder=2)
+        else:
+            ax.annotate("", xy=(xv, yv), xytext=(xu, yu), arrowprops=dict(arrowstyle="->", color="#ff5722", lw=2.5, shrinkA=12, shrinkB=12, mutation_scale=15), zorder=2)
+
+        mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
+        ax.text(mid_x, mid_y, str(step), fontsize=9, fontweight="bold", color="#ff5722", ha="center", va="center", bbox=dict(boxstyle="circle,pad=0.2", facecolor="white", edgecolor="#ff5722", alpha=0.9), zorder=4)
+
+    node_colors = {}
+    if path:
+        node_colors[path[0]] = "#00e676"
+        node_colors[path[-1]] = "#d50000"
+
+    _draw_base_nodes(ax, coords, node_radius, node_font, colors=node_colors, default_color="#78909c")
+    margin = max_R * 1.15
+    ax.set_aspect("equal")
+    ax.set_xlim(-margin, margin)
+    ax.set_ylim(-margin, margin)
+    plt.axis("off")
+    _handle_save_and_show(fig, filename, show)
+
+
+def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
+    ax.set_facecolor("#fafafa")
+
+    mst_set = set()
+    for e in mst_edges:
+        mst_set.add((e[0], e[1]))
+        mst_set.add((e[1], e[0]))
+
+    for edge in g.edges:
+        u, v = edge[0], edge[1]
+        w = edge[2] if len(edge) > 2 else 1
+        xu, yu, xv, yv = coords[u][0], coords[u][1], coords[v][0], coords[v][1]
+
+        if (u, v) in mst_set:
+            ax.plot([xu, xv], [yu, yv], color="#2979ff", linewidth=3.0, zorder=2)
+            mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
+            ax.text(mid_x, mid_y, str(w), fontsize=9, fontweight="bold", color="#2979ff", ha="center", va="center", bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#2979ff", alpha=0.9), zorder=4)
+        else:
+            ax.plot([xu, xv], [yu, yv], color="#90a4ae", linestyle="--", linewidth=1.2, zorder=1)
+            mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
+            ax.text(mid_x, mid_y, str(w), fontsize=8, color="#90a4ae", ha="center", va="center", bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.7), zorder=3)
+
+    _draw_base_nodes(ax, coords, node_radius, node_font, default_color="#2979ff")
+    plt.title(f"CÂY KHUNG NHỎ NHẤT (MST) – Tổng trọng số = {total_weight}", fontsize=13, fontweight="bold", pad=20)
+    margin = max_R * 1.15
+    ax.set_aspect("equal")
+    ax.set_xlim(-margin, margin)
+    ax.set_ylim(-margin, margin)
+    plt.axis("off")
+    _handle_save_and_show(fig, filename, show)
+
+
+def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filename="max_flow.png", show=True):
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
+    ax.set_facecolor("#fafafa")
+
+    cut_set = set((e[0], e[1]) for e in min_cut_edges)
+
+    for edge in g.edges:
+        u, v = edge[0], edge[1]
+        cap = edge[2] if len(edge) > 2 else 0
+        flow = flow_matrix[u][v] if (u < len(flow_matrix) and v < len(flow_matrix[u])) else 0
+        xu, yu, xv, yv = coords[u][0], coords[u][1], coords[v][0], coords[v][1]
+
+        is_saturated = (flow == cap and cap > 0)
+        is_cut = (u, v) in cut_set
+        edge_color = "#d50000" if is_saturated else "#78909c"
+        lw = 2.8 if is_saturated else 1.2
+
+        ax.annotate("", xy=(xv, yv), xytext=(xu, yu), arrowprops=dict(arrowstyle="->", color=edge_color, lw=lw, shrinkA=12, shrinkB=12, mutation_scale=15), zorder=2)
+
+        mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
+        box_props = dict(boxstyle="round,pad=0.2", facecolor="#ffebee" if is_saturated else "white", edgecolor="#e91e63" if is_cut else "none", linewidth=1.8 if is_cut else 0, alpha=0.9)
+        ax.text(mid_x, mid_y, f"{flow}/{cap}", fontsize=9, fontweight="bold", color="#d50000" if is_saturated else "#37474f", ha="center", va="center", bbox=box_props, zorder=4)
+
+    node_colors, node_labels = {}, {}
+    for i in range(g.n):
+        if i == source:
+            node_colors[i], node_labels[i] = "#00e5ff", f"{i}\n(S)"
+        elif i == sink:
+            node_colors[i], node_labels[i] = "#ff3d00", f"{i}\n(T)"
+        else:
+            node_colors[i], node_labels[i] = "#b0bec5", str(i)
+
+    _draw_base_nodes(ax, coords, node_radius, node_font, colors=node_colors, labels=node_labels)
+    plt.title(f"LUỒNG CỰC ĐẠI TRONG MẠNG (MAX FLOW = {max_flow}) & LÁT CẮT HẸP NHẤT", fontsize=12, fontweight="bold", pad=20)
+    margin = max_R * 1.15
+    ax.set_aspect("equal")
+    ax.set_xlim(-margin, margin)
+    ax.set_ylim(-margin, margin)
+    plt.axis("off")
+    _handle_save_and_show(fig, filename, show)
