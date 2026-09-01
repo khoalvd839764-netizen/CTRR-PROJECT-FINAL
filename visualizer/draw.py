@@ -4,6 +4,26 @@ import subprocess
 import matplotlib.pyplot as plt
 
 
+DEFAULT_RESULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "results"))
+
+
+def _resolve_filepath(filename):
+    """
+    Tự động chuyển đường dẫn lưu ảnh vào thư mục results/ nếu chưa có thư mục chỉ định.
+    Tự động tạo thư mục nếu chưa tồn tại.
+    """
+    if not os.path.isabs(filename):
+        dirname = os.path.dirname(filename)
+        if not dirname:
+            filename = os.path.join(DEFAULT_RESULT_DIR, filename)
+        elif not filename.startswith("results") and not filename.startswith("./results"):
+            filename = os.path.join(DEFAULT_RESULT_DIR, os.path.basename(filename))
+        else:
+            filename = os.path.abspath(filename)
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    return filename
+
+
 def compute_smart_layout(n):
     coords = {}
     if n <= 8:
@@ -22,6 +42,21 @@ def compute_smart_layout(n):
             theta = (2 * math.pi * i) / 5 + (math.pi / 10)
             coords[10 + i] = (R_in * math.cos(theta), R_in * math.sin(theta))
         return coords, R_out, 0.85, 10, 8.5, (10, 10)
+    elif n == 20:
+        R1, R2, R3 = 19.0, 12.0, 5.0
+        # Tầng 1: Vòng ngoài cùng 10 đỉnh (0 -> 9)
+        for i in range(10):
+            theta = (2 * math.pi * i) / 10
+            coords[i] = (R1 * math.cos(theta), R1 * math.sin(theta))
+        # Tầng 2: Vòng giữa 6 đỉnh (10 -> 15)
+        for j in range(6):
+            theta = (2 * math.pi * j) / 6 + (math.pi / 6)
+            coords[10 + j] = (R2 * math.cos(theta), R2 * math.sin(theta))
+        # Tầng 3: Cụm lõi trung tâm 4 đỉnh (16 -> 19)
+        for k in range(4):
+            theta = (2 * math.pi * k) / 4 + (math.pi / 4)
+            coords[16 + k] = (R3 * math.cos(theta), R3 * math.sin(theta))
+        return coords, R1, 0.85, 10, 8.5, (12, 12)
     elif n == 30:
         R1, R2, R3 = 22, 13, 5.5
         for i in range(16):
@@ -66,18 +101,20 @@ def _draw_base_nodes(ax, coords, node_radius, node_font, colors=None, labels=Non
 
 
 def _handle_save_and_show(fig, filename, show):
-    plt.savefig(filename, dpi=300, bbox_inches="tight", facecolor="#fafafa")
+    filepath = _resolve_filepath(filename)
+    plt.savefig(filepath, dpi=300, bbox_inches="tight", facecolor="#fafafa")
     if show:
         try:
             if os.name == "posix":
                 cmd = "open" if "darwin" in os.sys.platform else "xdg-open"
-                subprocess.Popen([cmd, filename], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen([cmd, filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             elif os.name == "nt":
-                os.startfile(filename)
+                os.startfile(filepath)
         except Exception:
             plt.show(block=False)
             plt.pause(0.5)
     plt.close(fig)
+    return filepath
 
 
 def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highlight=None, colors=None, show=True):
@@ -153,7 +190,7 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
     ax.set_xlim(-margin, margin)
     ax.set_ylim(-margin, margin)
     plt.axis("off")
-    _handle_save_and_show(fig, filename, show)
+    return _handle_save_and_show(fig, filename, show)
 
 
 draw_graph = draw
@@ -194,7 +231,7 @@ def draw_euler(g, path, edges_order, filename="euler_path.png", show=True):
     ax.set_xlim(-margin, margin)
     ax.set_ylim(-margin, margin)
     plt.axis("off")
-    _handle_save_and_show(fig, filename, show)
+    return _handle_save_and_show(fig, filename, show)
 
 
 def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
@@ -228,7 +265,7 @@ def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
     ax.set_xlim(-margin, margin)
     ax.set_ylim(-margin, margin)
     plt.axis("off")
-    _handle_save_and_show(fig, filename, show)
+    return _handle_save_and_show(fig, filename, show)
 
 
 def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filename="max_flow.png", show=True):
@@ -271,4 +308,5 @@ def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filenam
     ax.set_xlim(-margin, margin)
     ax.set_ylim(-margin, margin)
     plt.axis("off")
-    _handle_save_and_show(fig, filename, show)
+    return _handle_save_and_show(fig, filename, show)
+
