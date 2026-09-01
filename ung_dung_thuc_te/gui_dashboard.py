@@ -1,6 +1,8 @@
 """
 Module: ung_dung_thuc_te/gui_dashboard.py
-Mục đích: Giao diện trực quan hóa Đa góc nhìn (Multi-view Dashboard) 3 Cột cho Ứng Dụng Thực Tế Robot Hút Bụi:
+Mục đích: Giao diện trực quan hóa Đa góc nhìn (Multi-view Dashboard) 3 Cột chuẩn Full-HD
+cho Ứng Dụng Thực Tế Robot Hút Bụi Thông Minh.
+Tương thích hoàn hảo với chế độ Toàn Màn Hình (Fullscreen) và Tự Động Co Giãn (Hardware Scaled):
   - CỘT 1 (Trái): Sa Bàn Căn Hộ 3D Isometric (Xoay 360°, Zoom 40%-300%, Nội thất 3D né vật cản, Robot phát quang).
   - CỘT 2 (Giữa): Đồ Thị Toán Học G = (V, E) (25 đỉnh, 36 cung cong Bézier không đè nét, quả cầu năng lượng).
   - CỘT 3 (Phải): Bộ Soi Mã Giả & Biến Trực Tiếp (Pseudocode Line Highlight, Live DSU/Queue/Stack/Flow, Bảng điều khiển).
@@ -20,22 +22,22 @@ from ung_dung_thuc_te.algorithms import RobotAlgorithms
 # =============================================================================
 # CẤU HÌNH KÍCH THƯỚC VÀ MÀU SẮC GIAO DIỆN CHUẨN DASHBOARD
 # =============================================================================
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+CANVAS_WIDTH = 1920
+CANVAS_HEIGHT = 1080
 FPS = 60
 
-# Kích thước 3 Cột
-COL_Y = 56
-COL_HEIGHT = 804
+# Bố cục 3 Cột chuẩn pixel-perfect
+COL_Y = 52
+COL_HEIGHT = 1014
 
-COL1_X = 16
-COL1_WIDTH = 510
+COL1_X = 14
+COL1_WIDTH = 570
 
-COL2_X = 540
-COL2_WIDTH = 680
+COL2_X = 596
+COL2_WIDTH = 730
 
-COL3_X = 1234
-COL3_WIDTH = 520
+COL3_X = 1338
+COL3_WIDTH = 568
 
 # Bảng màu Dark Cyber UI cao cấp
 COLOR_APP_BG = (10, 15, 29)
@@ -69,13 +71,16 @@ def get_vietnamese_font(size, bold=False):
 class SmartRobotSimulationApp:
     """
     Lớp điều phối toàn bộ Ứng Dụng Thực Tế Robot Hút Bụi Thông Minh.
+    Sử dụng Virtual Canvas 1920x1080 với Hardware Scaling để Fullscreen hoàn hảo trên mọi màn hình.
     """
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("ROBOT HÚT BỤI THÔNG MINH — ỨNG DỤNG THỰC TẾ CTRR 100%")
 
         self.is_fullscreen = False
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE | pygame.SCALED)
+        self.screen = pygame.display.set_mode(
+            (CANVAS_WIDTH, CANVAS_HEIGHT), pygame.RESIZABLE | pygame.SCALED
+        )
         self.clock = pygame.time.Clock()
 
         # Hệ thống Font chữ phân cấp
@@ -93,14 +98,14 @@ class SmartRobotSimulationApp:
         self.n = len(self.nodes_data)
         self.curvatures = {tuple(sorted(k)): v for k, v in EDGE_CURVATURE.items()}
 
-        # Khởi tạo Bộ sinh thuật toán
+        # Khởi tạo Bộ sinh thuật toán (Tái sử dụng 100% core/)
         self.algo_engine = RobotAlgorithms(n=self.n, edges=self.edges, nodes_data=self.nodes_data)
 
         # Camera 3D & Điều khiển Zoom / Pan
         self.is_3d_mode = True
         self.cam_yaw = 45.0
         self.cam_pitch = 38.0
-        self.cam_zoom = 0.95
+        self.cam_zoom = 1.15
         self.cam_pan_x = 0
         self.cam_pan_y = 0
         self.is_dragging_3d = False
@@ -120,23 +125,24 @@ class SmartRobotSimulationApp:
         self.anim_t = 1.0
         self.anim_speed = 0.035
 
-        # Danh sách Nút Menu Chế độ
+        # Danh sách Nút Menu Chế độ Top Bar
         self.top_buttons = []
         self.init_top_buttons()
 
         # Nút điều khiển Zoom / Pan / 3D ở Cột 1
-        self.btn_zoom_out_rect = pygame.Rect(COL1_X + 288, COL_Y + 10, 26, 26)
-        self.btn_zoom_badge_rect = pygame.Rect(COL1_X + 318, COL_Y + 10, 56, 26)
-        self.btn_zoom_in_rect = pygame.Rect(COL1_X + 378, COL_Y + 10, 26, 26)
-        self.btn_view_3d_rect = pygame.Rect(COL1_X + 410, COL_Y + 10, 88, 26)
+        top_btn_y = COL_Y + 8
+        self.btn_view_3d_rect = pygame.Rect(COL1_X + COL1_WIDTH - 76, top_btn_y, 66, 26)
+        self.btn_zoom_in_rect = pygame.Rect(COL1_X + COL1_WIDTH - 106, top_btn_y, 26, 26)
+        self.btn_zoom_badge_rect = pygame.Rect(COL1_X + COL1_WIDTH - 162, top_btn_y, 52, 26)
+        self.btn_zoom_out_rect = pygame.Rect(COL1_X + COL1_WIDTH - 192, top_btn_y, 26, 26)
 
         # Nút điều khiển Bước ở Cột 3
-        btn_y = COL_Y + COL_HEIGHT - 44
-        self.btn_prev_rect = pygame.Rect(COL3_X + 16, btn_y, 90, 32)
-        self.btn_next_rect = pygame.Rect(COL3_X + 114, btn_y, 110, 32)
-        self.btn_auto_rect = pygame.Rect(COL3_X + 232, btn_y, 150, 32)
-        self.btn_reset_rect = pygame.Rect(COL3_X + 390, btn_y, 80, 32)
-        self.btn_fullscreen_rect = pygame.Rect(COL3_X + 478, btn_y, (COL3_WIDTH - 32) - 462, 32)
+        ctrl_btn_y = COL_Y + COL_HEIGHT - 46
+        self.btn_prev_rect = pygame.Rect(COL3_X + 12, ctrl_btn_y, 90, 36)
+        self.btn_next_rect = pygame.Rect(COL3_X + 108, ctrl_btn_y, 110, 36)
+        self.btn_auto_rect = pygame.Rect(COL3_X + 224, ctrl_btn_y, 140, 36)
+        self.btn_reset_rect = pygame.Rect(COL3_X + 370, ctrl_btn_y, 80, 36)
+        self.btn_fullscreen_rect = pygame.Rect(COL3_X + 456, ctrl_btn_y, COL3_WIDTH - 12 - 456, 36)
 
         # Khởi động thuật toán mặc định
         self.switch_mode("MST")
@@ -152,23 +158,24 @@ class SmartRobotSimulationApp:
             ("[6] Đồ Thị 2 Phía", "BIPARTITE", (236, 72, 153)),
             ("[7] Max-Flow Hộp Rác", "MAXFLOW", (248, 113, 113))
         ]
+        btn_gap = 8
+        btn_w = (CANVAS_WIDTH - 28 - 6 * btn_gap) // 7
+        btn_h = 36
         buttons = []
-        btn_w = (SCREEN_WIDTH - 32 - 6 * 8) // 7
-        btn_h = 34
         for i, (label, mode_id, color) in enumerate(modes):
-            bx = 16 + i * (btn_w + 8)
-            rect = pygame.Rect(bx, 10, btn_w, btn_h)
+            bx = 14 + i * (btn_w + btn_gap)
+            rect = pygame.Rect(bx, 8, btn_w, btn_h)
             buttons.append((rect, label, mode_id, color))
         self.top_buttons = buttons
 
     def get_column1_pos(self, node_id, z=0):
         """Chiếu điểm (x, y, z) của Căn hộ sang tọa độ màn hình ở Cột 1 (3D Isometric hoặc 2D)."""
         base_x, base_y = self.base_coords[node_id]
-        center_x, center_y = 290, 410
         cx = COL1_WIDTH // 2 + self.cam_pan_x
-        cy = COL_HEIGHT // 2 + 10 + self.cam_pan_y
+        cy = COL_HEIGHT // 2 + self.cam_pan_y
 
         if not self.is_3d_mode:
+            center_x, center_y = 290, 410
             sx = cx + (base_x + 15 - center_x) * self.cam_zoom
             sy = cy + (base_y + 15 - center_y) * self.cam_zoom
             return int(sx), int(sy)
@@ -197,7 +204,7 @@ class SmartRobotSimulationApp:
         """Tính tọa độ 2D thông thoáng ở Cột 2 (Đồ thị Toán học)."""
         base_x, base_y = self.base_coords[node_id]
         scale_x = (COL2_WIDTH - 90) / 440.0
-        scale_y = (COL_HEIGHT - 140) / 600.0
+        scale_y = (COL_HEIGHT - 150) / 640.0
         gx = int((base_x - 60) * scale_x + 45)
         gy = int((base_y - 100) * scale_y + 75)
         return gx, gy
@@ -266,7 +273,7 @@ class SmartRobotSimulationApp:
     def draw_3d_box(self, surf, x, y, z, w, d, h, col_top, col_side_x, col_side_y, border_col=None):
         """Vẽ khối hộp 3D nội thất đặc hoàn chỉnh (Đáy, Thân và Nắp) chuẩn Isometric."""
         cx = COL1_WIDTH // 2 + self.cam_pan_x
-        cy = COL_HEIGHT // 2 + 10 + self.cam_pan_y
+        cy = COL_HEIGHT // 2 + self.cam_pan_y
 
         b0 = self.get_3d_point(x, y, z, cx, cy)
         b1 = self.get_3d_point(x + w, y, z, cx, cy)
@@ -300,40 +307,44 @@ class SmartRobotSimulationApp:
         surf.blit(t_col1, (16, 12))
 
         zoom_pct = int(round(self.cam_zoom * 100))
-        surf.blit(self.font_small.render(f"Cuộn chuột / Phím [+/-] Zoom: {zoom_pct}% • Trái: Xoay 360° • Phải: Dời", True, COLOR_TEXT_MUTED), (16, 32))
+        surf.blit(self.font_small.render(f"Cuộn chuột / Phím [+/-] Zoom: {zoom_pct}% • Trái: Xoay • Phải: Dời", True, COLOR_TEXT_MUTED), (16, 30))
 
         # Nút Zoom Out [-]
-        pygame.draw.rect(surf, (30, 41, 59), (288, 10, 26, 26), border_radius=4)
-        pygame.draw.rect(surf, (71, 85, 105), (288, 10, 26, 26), width=1, border_radius=4)
+        z_out_rx = COL1_WIDTH - 192
+        pygame.draw.rect(surf, (30, 41, 59), (z_out_rx, 8, 26, 26), border_radius=4)
+        pygame.draw.rect(surf, (71, 85, 105), (z_out_rx, 8, 26, 26), width=1, border_radius=4)
         z_out_t = self.font_main.render("-", True, COLOR_TEXT_WHITE)
-        surf.blit(z_out_t, (288 + 13 - z_out_t.get_width()//2, 10 + 13 - z_out_t.get_height()//2 - 1))
+        surf.blit(z_out_t, (z_out_rx + 13 - z_out_t.get_width()//2, 8 + 13 - z_out_t.get_height()//2 - 1))
 
         # Badge Zoom % / Reset
-        pygame.draw.rect(surf, (15, 23, 42), (318, 10, 56, 26), border_radius=4)
-        z_border_c = COLOR_TEXT_CYAN if zoom_pct != 95 else (71, 85, 105)
-        pygame.draw.rect(surf, z_border_c, (318, 10, 56, 26), width=1, border_radius=4)
-        z_pct_t = self.font_tag.render(f"{zoom_pct}%", True, COLOR_TEXT_CYAN if zoom_pct != 95 else COLOR_TEXT_MUTED)
-        surf.blit(z_pct_t, (318 + 28 - z_pct_t.get_width()//2, 10 + 13 - z_pct_t.get_height()//2))
+        z_badge_rx = COL1_WIDTH - 162
+        pygame.draw.rect(surf, (15, 23, 42), (z_badge_rx, 8, 52, 26), border_radius=4)
+        z_border_c = COLOR_TEXT_CYAN if zoom_pct != 115 else (71, 85, 105)
+        pygame.draw.rect(surf, z_border_c, (z_badge_rx, 8, 52, 26), width=1, border_radius=4)
+        z_pct_t = self.font_tag.render(f"{zoom_pct}%", True, COLOR_TEXT_CYAN if zoom_pct != 115 else COLOR_TEXT_MUTED)
+        surf.blit(z_pct_t, (z_badge_rx + 26 - z_pct_t.get_width()//2, 8 + 13 - z_pct_t.get_height()//2))
 
         # Nút Zoom In [+]
-        pygame.draw.rect(surf, (30, 41, 59), (378, 10, 26, 26), border_radius=4)
-        pygame.draw.rect(surf, (71, 85, 105), (378, 10, 26, 26), width=1, border_radius=4)
+        z_in_rx = COL1_WIDTH - 106
+        pygame.draw.rect(surf, (30, 41, 59), (z_in_rx, 8, 26, 26), border_radius=4)
+        pygame.draw.rect(surf, (71, 85, 105), (z_in_rx, 8, 26, 26), width=1, border_radius=4)
         z_in_t = self.font_main.render("+", True, COLOR_TEXT_WHITE)
-        surf.blit(z_in_t, (378 + 13 - z_in_t.get_width()//2, 10 + 13 - z_in_t.get_height()//2 - 1))
+        surf.blit(z_in_t, (z_in_rx + 13 - z_in_t.get_width()//2, 8 + 13 - z_in_t.get_height()//2 - 1))
 
         # Nút Đổi 3D / 2D
+        b3d_rx = COL1_WIDTH - 76
         b3d_bg = (14, 116, 144) if self.is_3d_mode else (30, 41, 59)
-        pygame.draw.rect(surf, b3d_bg, (410, 10, 88, 26), border_radius=4)
-        pygame.draw.rect(surf, COLOR_TEXT_CYAN, (410, 10, 88, 26), width=1, border_radius=4)
+        pygame.draw.rect(surf, b3d_bg, (b3d_rx, 8, 66, 26), border_radius=4)
+        pygame.draw.rect(surf, COLOR_TEXT_CYAN, (b3d_rx, 8, 66, 26), width=1, border_radius=4)
         b3d_lbl = "🎮 3D" if self.is_3d_mode else "📐 2D"
         b3d_t = self.font_tag.render(b3d_lbl, True, (255, 255, 255))
-        surf.blit(b3d_t, (410 + 44 - b3d_t.get_width()//2, 10 + 13 - b3d_t.get_height()//2))
+        surf.blit(b3d_t, (b3d_rx + 33 - b3d_t.get_width()//2, 8 + 13 - b3d_t.get_height()//2))
 
         scanned_edge = cur_step.get("scanned_edge") if cur_step else None
         chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
 
         # 1. Vẽ Mặt sàn kiến trúc 5 phòng
-        cx, cy = COL1_WIDTH // 2 + self.cam_pan_x, COL_HEIGHT // 2 + 10 + self.cam_pan_y
+        cx, cy = COL1_WIDTH // 2 + self.cam_pan_x, COL_HEIGHT // 2 + self.cam_pan_y
         for rx, ry, rw, rh, rname, rcol, grid_col in ROOMS_LAYOUT_3D:
             if self.is_3d_mode:
                 p0 = self.get_3d_point(rx, ry, 0, cx, cy)
@@ -451,7 +462,7 @@ class SmartRobotSimulationApp:
             edge_tuple = tuple(sorted((u, v)))
             rx, ry = self.get_interpolated_arc_pos(u_p, v_p, edge_tuple, self.anim_t)
 
-            scale = max(0.6, min(2.5, self.cam_zoom))
+            scale = max(0.7, min(2.5, self.cam_zoom))
             bot_base = (rx, ry)
             bot_top = (rx, int(ry - 14 * scale))
             bot_lidar = (rx, int(ry - 20 * scale))
@@ -493,7 +504,7 @@ class SmartRobotSimulationApp:
 
         surf.blit(self.font_small.render("Cung cong Bézier tách biệt 100%: Dễ nhìn, không đè lên nhau", True, COLOR_TEXT_MUTED), (16, 30))
 
-        graph_bg = pygame.Rect(16, 52, COL2_WIDTH - 32, COL_HEIGHT - 68)
+        graph_bg = pygame.Rect(12, 48, COL2_WIDTH - 24, COL_HEIGHT - 62)
         pygame.draw.rect(surf, (15, 23, 42), graph_bg, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), graph_bg, width=1, border_radius=6)
 
@@ -592,14 +603,15 @@ class SmartRobotSimulationApp:
         step_txt = f"Bước: {self.current_step_idx + 1}/{len(self.steps)}" if self.steps else "Sẵn sàng"
         surf.blit(self.font_small.render(f"Đang chạy: {self.active_mode} ALGORITHM | {step_txt}", True, COLOR_TEXT_MUTED), (16, 30))
 
-        py = 52
+        py = 50
 
-        # 1. BẢNG MÃ GIẢ PSEUDOCODE
-        box1 = pygame.Rect(16, py, COL3_WIDTH - 32, 170)
+        # 1. BẢNG MÃ GIẢ PSEUDOCODE (210px)
+        h1 = 210
+        box1 = pygame.Rect(14, py, COL3_WIDTH - 28, h1)
         pygame.draw.rect(surf, (15, 23, 42), box1, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), box1, width=1, border_radius=6)
 
-        surf.blit(self.font_tag.render("MÃ GIẢ THUẬT TOÁN ĐANG THỰC THI (PSEUDOCODE):", True, COLOR_TEXT_CYAN), (24, py + 8))
+        surf.blit(self.font_tag.render("MÃ GIẢ THUẬT TOÁN ĐANG THỰC THI (PSEUDOCODE):", True, COLOR_TEXT_CYAN), (22, py + 8))
 
         if cur_step and "pseudocode" in cur_step:
             active_line = cur_step.get("pseudocode_line", 1)
@@ -607,17 +619,18 @@ class SmartRobotSimulationApp:
             for idx, pline in enumerate(cur_step["pseudocode"]):
                 is_cur_line = (idx + 1 == active_line)
                 if is_cur_line:
-                    hl_rect = pygame.Rect(20, line_y - 2, COL3_WIDTH - 40, 18)
+                    hl_rect = pygame.Rect(18, line_y - 2, COL3_WIDTH - 36, 18)
                     pygame.draw.rect(surf, (55, 48, 163), hl_rect, border_radius=3)
-                    surf.blit(self.font_code.render(f"▶ {pline}", True, COLOR_TEXT_GOLD), (24, line_y))
+                    surf.blit(self.font_code.render(f"▶ {pline}", True, COLOR_TEXT_GOLD), (22, line_y))
                 else:
-                    surf.blit(self.font_code.render(f"  {pline}", True, (203, 213, 225)), (24, line_y))
-                line_y += 20
+                    surf.blit(self.font_code.render(f"  {pline}", True, (203, 213, 225)), (22, line_y))
+                line_y += 19
 
-        py += 180
+        py += h1 + 10
 
-        # 2. HỘP GIẢI THÍCH CHI TIẾT TỪNG BƯỚC
-        box2 = pygame.Rect(16, py, COL3_WIDTH - 32, 195)
+        # 2. HỘP GIẢI THÍCH CHI TIẾT TỪNG BƯỚC (245px)
+        h2 = 245
+        box2 = pygame.Rect(14, py, COL3_WIDTH - 28, h2)
         pygame.draw.rect(surf, (15, 23, 42), box2, border_radius=6)
         pygame.draw.rect(surf, COLOR_CARD_BORDER_GLOW, box2, width=1, border_radius=6)
 
@@ -628,67 +641,68 @@ class SmartRobotSimulationApp:
             v_name = self.nodes_data.get(v, {}).get("name", f"Đỉnh {v}")
             w = cur_step.get("scanned_weight", 0.0)
 
-            surf.blit(self.font_main.render(f"BƯỚC {self.current_step_idx + 1}/{len(self.steps)}: ĐÁNH GIÁ CẠNH ({u} ↔ {v})", True, COLOR_TEXT_GOLD), (24, py + 8))
-            surf.blit(self.font_body.render(f"• Quét lối đi: [{u}] {u_name} ➔ [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (24, py + 30))
+            surf.blit(self.font_main.render(f"BƯỚC {self.current_step_idx + 1}/{len(self.steps)}: ĐÁNH GIÁ CẠNH ({u} ↔ {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
+            surf.blit(self.font_body.render(f"• Quét lối đi: [{u}] {u_name} ➔ [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 28))
 
-            surf.blit(self.font_main.render("• Điều kiện toán học:", True, (244, 114, 182)), (24, py + 52))
-            surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (28, py + 70))
+            surf.blit(self.font_main.render("• Điều kiện toán học:", True, (244, 114, 182)), (22, py + 48))
+            surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (26, py + 66))
 
-            surf.blit(self.font_main.render("• Hành động:", True, COLOR_TEXT_GREEN), (24, py + 95))
-            surf.blit(self.font_main.render(cur_step.get("result_text", ""), True, cur_step.get("status_color", COLOR_TEXT_CYAN)), (28, py + 115))
+            surf.blit(self.font_main.render("• Hành động:", True, COLOR_TEXT_GREEN), (22, py + 90))
+            surf.blit(self.font_main.render(cur_step.get("result_text", ""), True, cur_step.get("status_color", COLOR_TEXT_CYAN)), (26, py + 108))
 
-        py += 205
+        py += h2 + 10
 
-        # 3. BẢNG TRẠNG THÁI BIẾN TOÁN HỌC LIVE
-        box3 = pygame.Rect(16, py, COL3_WIDTH - 32, 195)
+        # 3. BẢNG TRẠNG THÁI BIẾN TOÁN HỌC LIVE (435px)
+        h3 = 435
+        box3 = pygame.Rect(14, py, COL3_WIDTH - 28, h3)
         pygame.draw.rect(surf, (15, 23, 42), box3, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), box3, width=1, border_radius=6)
 
-        surf.blit(self.font_tag.render("BẢNG TRẠNG THÁI BIẾN TOÁN HỌC (LIVE VARIABLES):", True, COLOR_TEXT_CYAN), (24, py + 8))
+        surf.blit(self.font_tag.render("BẢNG TRẠNG THÁI BIẾN TOÁN HỌC (LIVE VARIABLES):", True, COLOR_TEXT_CYAN), (22, py + 8))
 
         if cur_step and "math_state" in cur_step:
-            var_y = py + 28
+            var_y = py + 26
             for k, val in cur_step["math_state"].items():
-                surf.blit(self.font_body.render(f"• {k}:", True, (148, 163, 184)), (24, var_y))
-                surf.blit(self.font_main.render(str(val), True, COLOR_TEXT_GOLD), (240, var_y))
-                var_y += 20
-
-            py += 150
+                surf.blit(self.font_body.render(f"• {k}:", True, (148, 163, 184)), (22, var_y))
+                surf.blit(self.font_main.render(str(val), True, COLOR_TEXT_GOLD), (220, var_y))
+                var_y += 19
 
             chosen_list = list(cur_step["after_chosen"])
-            chosen_str = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[:8]])
-            surf.blit(self.font_small.render(f"Tập cạnh đã chọn ({len(chosen_list)}): {chosen_str}", True, (226, 232, 240)), (20, py))
-            if len(chosen_list) > 8:
-                chosen_str2 = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[8:16]])
-                surf.blit(self.font_small.render(f"                         {chosen_str2}", True, (226, 232, 240)), (20, py + 15))
+            c_y = var_y + 8
+            chosen_str = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[:10]])
+            surf.blit(self.font_small.render(f"Tập cạnh đã chọn ({len(chosen_list)}): {chosen_str}", True, (226, 232, 240)), (22, c_y))
+            if len(chosen_list) > 10:
+                chosen_str2 = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[10:20]])
+                surf.blit(self.font_small.render(f"                         {chosen_str2}", True, (226, 232, 240)), (22, c_y + 16))
 
         # 4. NÚT ĐIỀU KHIỂN BƯỚC
         mouse_pos = pygame.mouse.get_pos()
-        btn_y = COL_HEIGHT - 44
+        btn_y = COL_HEIGHT - 46
 
         is_h_p = self.btn_prev_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(surf, (51, 65, 85) if is_h_p else (30, 41, 59), (16, btn_y, 90, 32), border_radius=5)
-        pygame.draw.rect(surf, COLOR_TEXT_CYAN, (16, btn_y, 90, 32), width=1, border_radius=5)
-        surf.blit(self.font_body.render("◀ LÙI [B]", True, (255, 255, 255)), (28, btn_y + 8))
+        pygame.draw.rect(surf, (51, 65, 85) if is_h_p else (30, 41, 59), (12, btn_y, 90, 36), border_radius=5)
+        pygame.draw.rect(surf, COLOR_TEXT_CYAN, (12, btn_y, 90, 36), width=1, border_radius=5)
+        surf.blit(self.font_body.render("◀ LÙI [B]", True, (255, 255, 255)), (24, btn_y + 10))
 
         is_h_n = self.btn_next_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(surf, (14, 116, 144) if is_h_n else (8, 145, 178), (114, btn_y, 110, 32), border_radius=5)
-        pygame.draw.rect(surf, (255, 255, 255) if is_h_n else COLOR_TEXT_CYAN, (114, btn_y, 110, 32), width=1, border_radius=5)
-        surf.blit(self.font_main.render("TIẾP [S] ▶", True, (255, 255, 255)), (128, btn_y + 7))
+        pygame.draw.rect(surf, (14, 116, 144) if is_h_n else (8, 145, 178), (108, btn_y, 110, 36), border_radius=5)
+        pygame.draw.rect(surf, (255, 255, 255) if is_h_n else COLOR_TEXT_CYAN, (108, btn_y, 110, 36), width=1, border_radius=5)
+        surf.blit(self.font_main.render("TIẾP [S] ▶", True, (255, 255, 255)), (122, btn_y + 9))
 
         auto_bg = (5, 150, 105) if self.is_auto_playing else (51, 65, 85)
-        pygame.draw.rect(surf, auto_bg, (232, btn_y, 150, 32), border_radius=5)
-        pygame.draw.rect(surf, COLOR_TEXT_GREEN if self.is_auto_playing else (148, 163, 184), (232, btn_y, 150, 32), width=1, border_radius=5)
-        auto_lbl = "⏸️ DỪNG [SPACE]" if self.is_auto_playing else "▶️ PHÁT TỰ ĐỘNG"
-        surf.blit(self.font_body.render(auto_lbl, True, (255, 255, 255)), (244, btn_y + 8))
+        pygame.draw.rect(surf, auto_bg, (224, btn_y, 140, 36), border_radius=5)
+        pygame.draw.rect(surf, COLOR_TEXT_GREEN if self.is_auto_playing else (148, 163, 184), (224, btn_y, 140, 36), width=1, border_radius=5)
+        auto_lbl = "⏸️ DỪNG [SPACE]" if self.is_auto_playing else "▶️ TỰ ĐỘNG"
+        surf.blit(self.font_body.render(auto_lbl, True, (255, 255, 255)), (236, btn_y + 10))
 
-        pygame.draw.rect(surf, (51, 65, 85), (390, btn_y, 80, 32), border_radius=5)
-        pygame.draw.rect(surf, (148, 163, 184), (390, btn_y, 80, 32), width=1, border_radius=5)
-        surf.blit(self.font_body.render("🔄 ĐẶT LẠI", True, (255, 255, 255)), (398, btn_y + 8))
+        pygame.draw.rect(surf, (51, 65, 85), (370, btn_y, 80, 36), border_radius=5)
+        pygame.draw.rect(surf, (148, 163, 184), (370, btn_y, 80, 36), width=1, border_radius=5)
+        surf.blit(self.font_body.render("🔄 ĐẶT LẠI", True, (255, 255, 255)), (378, btn_y + 10))
 
+        fs_w = max(40, COL3_WIDTH - 12 - 456)
         is_h_fs = self.btn_fullscreen_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(surf, (14, 165, 233) if is_h_fs else (3, 105, 161), (478, btn_y, (COL3_WIDTH - 32) - 462, 32), border_radius=5)
-        surf.blit(self.font_tag.render("⛶ F11", True, (255, 255, 255)), (490, btn_y + 9))
+        pygame.draw.rect(surf, (14, 165, 233) if is_h_fs else (3, 105, 161), (456, btn_y, fs_w, 36), border_radius=5)
+        surf.blit(self.font_tag.render("⛶ F11", True, (255, 255, 255)), (464, btn_y + 10))
 
         self.screen.blit(surf, (COL3_X, COL_Y))
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL3_X, COL_Y, COL3_WIDTH, COL_HEIGHT), 2)
@@ -747,12 +761,16 @@ class SmartRobotSimulationApp:
             self.anim_t = 0.0
 
     def toggle_fullscreen(self):
-        """Bật / Tắt chế độ toàn màn hình."""
+        """Bật / Tắt chế độ toàn màn hình an toàn không bị méo độ phân giải."""
         self.is_fullscreen = not self.is_fullscreen
         if self.is_fullscreen:
-            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.SCALED)
+            self.screen = pygame.display.set_mode(
+                (CANVAS_WIDTH, CANVAS_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
+            )
         else:
-            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE | pygame.SCALED)
+            self.screen = pygame.display.set_mode(
+                (CANVAS_WIDTH, CANVAS_HEIGHT), pygame.RESIZABLE | pygame.SCALED
+            )
 
     def run(self):
         """Vòng lặp chính xử lý sự kiện và vẽ khung hình."""
@@ -797,7 +815,7 @@ class SmartRobotSimulationApp:
                         elif self.btn_zoom_in_rect.collidepoint(mx, my):
                             self.cam_zoom = min(3.0, self.cam_zoom + 0.15)
                         elif self.btn_zoom_badge_rect.collidepoint(mx, my):
-                            self.cam_zoom = 0.95
+                            self.cam_zoom = 1.15
                             self.cam_pan_x = 0
                             self.cam_pan_y = 0
                         elif self.btn_view_3d_rect.collidepoint(mx, my):
@@ -862,7 +880,7 @@ class SmartRobotSimulationApp:
                     elif event.key in [pygame.K_MINUS, pygame.K_KP_MINUS]:
                         self.cam_zoom = max(0.4, self.cam_zoom - 0.15)
                     elif event.key in [pygame.K_0, pygame.K_KP0]:
-                        self.cam_zoom = 0.95
+                        self.cam_zoom = 1.15
                         self.cam_pan_x = 0
                         self.cam_pan_y = 0
                     elif event.key == pygame.K_v:
