@@ -166,7 +166,7 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
         filename = f"{method.lower()}_animation.gif"
     filepath = _resolve_filepath(filename)
 
-    coords, R, node_r, fs_node, fs_edge, fig_sz = compute_smart_layout(g.n)
+    coords, R, node_r, fs_node, fs_edge, fig_sz = compute_smart_layout(g)
     
     if method.lower() == "dfs":
         frames_data = _generate_dfs_frames(g, start)
@@ -210,19 +210,25 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             ))
             is_in_tree = ((u, v) in tree_edges_set or (not g.directed and (v, u) in tree_edges_set))
 
+            import math
+            try:
+                dyn_base = max(0.8, min(8.0, 0.5 + math.sqrt(float(w)) * 0.9))
+            except:
+                dyn_base = 1.2
+
             if is_active:
                 edge_color = "#ff1744"  # Đỏ rực
-                lw = 4.0
+                lw = dyn_base * 1.8
                 ls = "-"
                 z = 5
             elif is_in_tree:
                 edge_color = "#00e5ff"  # Xanh ngọc phát sáng
-                lw = 2.8
+                lw = dyn_base * 1.3
                 ls = "-"
                 z = 4
             else:
                 edge_color = "#334155"  # Xám mờ
-                lw = 1.2
+                lw = dyn_base * 0.6
                 ls = "--"
                 z = 2
 

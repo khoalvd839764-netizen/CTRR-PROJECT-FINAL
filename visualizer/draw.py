@@ -24,54 +24,87 @@ def _resolve_filepath(filename):
     return filename
 
 
-def compute_smart_layout(n):
+def compute_smart_layout(g_or_n):
+    import math
+    
+    n = g_or_n.n if hasattr(g_or_n, 'n') else g_or_n
+    
+    # Kích thước cơ bản tùy n
+    if n <= 8:
+        R_max, node_radius, node_font, weight_font, fig_size = 10, 0.9, 11, 9, (8, 8)
+    elif n == 15:
+        R_4max, node_radius, node_font, weight_font, fig_size = 16, 0.85, 10, 8.5, (10, 10)
+        R_max = 16
+    elif n == 20:
+        R_max, node_radius, node_font, weight_font, fig_size = 19.0, 0.85, 10, 8.5, (12, 12)
+    elif n == 30:
+        R_max, node_radius, node_font, weight_font, fig_size = 22, 0.75, 8.5, 7.5, (13, 13)
+    else:
+        R_max, node_radius, node_font, weight_font, fig_size = max(12, n * 0.7), 0.7, 9, 8, (11, 11)
+
+    # NẾU CÓ DỮ LIỆU ĐỒ THỊ, DÙNG MÔ PHỎNG VẬT LÝ (SPRING LAYOUT) ĐỂ ĐẢM BẢO CẠNH NẶNG -> DÀI, NHẸ -> NGẮN
+    if hasattr(g_or_n, 'edges') and len(g_or_n.edges) > 0:
+        try:
+            import networkx as nx
+            G = nx.Graph()
+            for edge in g_or_n.edges:
+                u, v = edge[0], edge[1]
+                w = edge[2] if len(edge) > 2 else 1
+                
+                # Trong spring_layout, lực hút = weight. 
+                # Nếu muốn trọng số lớn (w=6) vẽ dài hơn trọng số nhỏ (w=2), 
+                # ta cần lực hút NHỎ HƠN cho w lớn (Tỷ lệ nghịch).
+                w_val = float(w)
+                inv_w = 1.0 / max(0.1, w_val)
+                G.add_edge(u, v, weight=inv_w)
+            
+            # Giữ nguyên các đỉnh mồ côi
+            for i in range(n):
+                G.add_node(i)
+
+            pos = nx.spring_layout(G, weight='weight', seed=42, iterations=150)
+            
+            # Căn chỉnh lại tọa độ (scale theo R_max)
+            coords = {i: (pos[i][0] * R_max, pos[i][1] * R_max) for i in range(n)}
+            return coords, R_max, node_radius, node_font, weight_font, fig_size
+        except ImportError:
+            pass # Fallback xuống vòng tròn nếu không có networkx
+
+    # --- FALLBACK: BỐ CỤC VÒNG TRÒN CỨNG NẾU CHỈ TRUYỀN N ---
     coords = {}
     if n <= 8:
-        R = 10
         for i in range(n):
             theta = (2 * math.pi * i) / n if n > 0 else 0
-            coords[i] = (R * math.cos(theta), R * math.sin(theta))
-        return coords, R, 0.9, 11, 9, (8, 8)
+            coords[i] = (R_max * math.cos(theta), R_max * math.sin(theta))
     elif n == 15:
-        R_out = 16
-        R_in = 8
         for i in range(10):
             theta = (2 * math.pi * i) / 10
-            coords[i] = (R_out * math.cos(theta), R_out * math.sin(theta))
+            coords[i] = (16 * math.cos(theta), 16 * math.sin(theta))
         for i in range(5):
             theta = (2 * math.pi * i) / 5 + (math.pi / 10)
-            coords[10 + i] = (R_in * math.cos(theta), R_in * math.sin(theta))
-        return coords, R_out, 0.85, 10, 8.5, (10, 10)
+            coords[10 + i] = (8 * math.cos(theta), 8 * math.sin(theta))
     elif n == 20:
-        R1, R2, R3 = 19.0, 12.0, 5.0
-        # Tầng 1: Vòng ngoài cùng 10 đỉnh (0 -> 9)
         for i in range(10):
             theta = (2 * math.pi * i) / 10
-            coords[i] = (R1 * math.cos(theta), R1 * math.sin(theta))
-        # Tầng 2: Vòng giữa 6 đỉnh (10 -> 15)
+            coords[i] = (19.0 * math.cos(theta), 19.0 * math.sin(theta))
         for j in range(6):
             theta = (2 * math.pi * j) / 6 + (math.pi / 6)
-            coords[10 + j] = (R2 * math.cos(theta), R2 * math.sin(theta))
-        # Tầng 3: Cụm lõi trung tâm 4 đỉnh (16 -> 19)
+            coords[10 + j] = (12.0 * math.cos(theta), 12.0 * math.sin(theta))
         for k in range(4):
             theta = (2 * math.pi * k) / 4 + (math.pi / 4)
-            coords[16 + k] = (R3 * math.cos(theta), R3 * math.sin(theta))
-        return coords, R1, 0.85, 10, 8.5, (12, 12)
+            coords[16 + k] = (5.0 * math.cos(theta), 5.0 * math.sin(theta))
     elif n == 30:
-        R1, R2, R3 = 22, 13, 5.5
         for i in range(16):
             theta = (2 * math.pi * i) / 16
-            coords[i] = (R1 * math.cos(theta), R1 * math.sin(theta))
+            coords[i] = (22 * math.cos(theta), 22 * math.sin(theta))
         for i in range(10):
             theta = (2 * math.pi * i) / 10 + (math.pi / 16)
-            coords[16 + i] = (R2 * math.cos(theta), R2 * math.sin(theta))
+            coords[16 + i] = (13 * math.cos(theta), 13 * math.sin(theta))
         for i in range(4):
             theta = (2 * math.pi * i) / 4 + (math.pi / 8)
-            coords[26 + i] = (R3 * math.cos(theta), R3 * math.sin(theta))
-        return coords, R1, 0.75, 8.5, 7.5, (13, 13)
+            coords[26 + i] = (5.5 * math.cos(theta), 5.5 * math.sin(theta))
     else:
         num_layers = max(1, math.ceil(n / 10))
-        R_max = max(12, n * 0.7)
         nodes_per_layer = n // num_layers
         curr = 0
         for layer in range(num_layers, 0, -1):
@@ -82,7 +115,8 @@ def compute_smart_layout(n):
                     theta = (2 * math.pi * j) / count
                     coords[curr] = (r * math.cos(theta), r * math.sin(theta))
                     curr += 1
-        return coords, R_max, 0.7, 9, 8, (11, 11)
+                    
+    return coords, R_max, node_radius, node_font, weight_font, fig_size
 
 
 def _draw_base_nodes(ax, coords, node_radius, node_font, colors=None, labels=None, default_color="#2E7D32"):
@@ -132,7 +166,7 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
     if colors is None:
         colors = {}
 
-    coords, max_R, node_radius, node_font, weight_font, fig_size = compute_smart_layout(n)
+    coords, max_R, node_radius, node_font, weight_font, fig_size = compute_smart_layout(g_or_n)
     fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
     ax.set_facecolor("#fafafa")
 
@@ -149,7 +183,16 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
         )
 
         edge_color = "#E53935" if is_highlighted else "#78909C"
-        line_width = 2.8 if is_highlighted else 1.1
+        
+        # Cập nhật: Nét vẽ tuân theo trọng số (Weight-proportional linewidth)
+        import math
+        try:
+            w_val = float(w)
+            dynamic_lw = max(0.8, min(8.0, 0.5 + math.sqrt(w_val) * 0.9))
+        except:
+            dynamic_lw = 1.2
+            
+        line_width = (dynamic_lw * 1.6) if is_highlighted else dynamic_lw
         z_order = 3 if is_highlighted else 1
         rad = 0.07 if is_directed else 0.0
 
@@ -197,7 +240,7 @@ draw_graph = draw
 
 
 def draw_euler(g, path, edges_order, filename="euler_path.png", show=True):
-    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g)
     fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
     ax.set_facecolor("#fafafa")
 
@@ -235,7 +278,7 @@ def draw_euler(g, path, edges_order, filename="euler_path.png", show=True):
 
 
 def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
-    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g)
     fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
     ax.set_facecolor("#fafafa")
 
@@ -249,12 +292,18 @@ def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
         w = edge[2] if len(edge) > 2 else 1
         xu, yu, xv, yv = coords[u][0], coords[u][1], coords[v][0], coords[v][1]
 
+        import math
+        try:
+            dyn_lw = max(0.8, min(8.0, 0.5 + math.sqrt(float(w)) * 0.9))
+        except:
+            dyn_lw = 1.2
+            
         if (u, v) in mst_set:
-            ax.plot([xu, xv], [yu, yv], color="#2979ff", linewidth=3.0, zorder=2)
+            ax.plot([xu, xv], [yu, yv], color="#2979ff", linewidth=dyn_lw * 1.5, zorder=2)
             mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
             ax.text(mid_x, mid_y, str(w), fontsize=9, fontweight="bold", color="#2979ff", ha="center", va="center", bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#2979ff", alpha=0.9), zorder=4)
         else:
-            ax.plot([xu, xv], [yu, yv], color="#90a4ae", linestyle="--", linewidth=1.2, zorder=1)
+            ax.plot([xu, xv], [yu, yv], color="#90a4ae", linestyle="--", linewidth=dyn_lw * 0.6, zorder=1)
             mid_x, mid_y = (xu + xv) / 2, (yu + yv) / 2
             ax.text(mid_x, mid_y, str(w), fontsize=8, color="#90a4ae", ha="center", va="center", bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.7), zorder=3)
 
@@ -269,7 +318,7 @@ def draw_mst(g, mst_edges, total_weight, filename="mst_result.png", show=True):
 
 
 def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filename="max_flow.png", show=True):
-    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g.n)
+    coords, max_R, node_radius, node_font, _, fig_size = compute_smart_layout(g)
     fig, ax = plt.subplots(figsize=fig_size, facecolor="#fafafa")
     ax.set_facecolor("#fafafa")
 
@@ -284,7 +333,13 @@ def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filenam
         is_saturated = (flow == cap and cap > 0)
         is_cut = (u, v) in cut_set
         edge_color = "#d50000" if is_saturated else "#78909c"
-        lw = 2.8 if is_saturated else 1.2
+        
+        import math
+        try:
+            dyn_lw = max(0.8, min(8.0, 0.5 + math.sqrt(float(cap)) * 0.9))
+        except:
+            dyn_lw = 1.2
+        lw = (dyn_lw * 1.5) if is_saturated else dyn_lw
 
         ax.annotate("", xy=(xv, yv), xytext=(xu, yu), arrowprops=dict(arrowstyle="->", color=edge_color, lw=lw, shrinkA=12, shrinkB=12, mutation_scale=15), zorder=2)
 

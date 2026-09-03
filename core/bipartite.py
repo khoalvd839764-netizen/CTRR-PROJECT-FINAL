@@ -1,21 +1,22 @@
-def check_bipartite(adj, n):
-    color = [0] * n
-    parent = [-1] * n
+def check_bipartite(adj, n): # ta quy định 1 là đỏ -1 là xanh 0 là chưa tô 
+    color = [0] * n  # tạo mảng quản lí duyệt 
+    parent = [-1] * n # lưu đỉnh vết cha 
 
+    # duyệt các đỉnh nếu có đỉnh chưa tô màu thì tô màu đỏ thêm queue
     for start in range(n):
         if color[start] != 0:
             continue
 
         color[start] = 1
         queue = [start]
-
+    # nếu queue đang có phần tử thì chạy 
         while len(queue) > 0:
-            u = queue.pop(0)
+            u = queue.pop(0) # lấy cái vừa được đẩy vào ra
 
-            for v, *w in adj.get(u, []):
-                if color[v] == 0:
-                    color[v] = -color[u]
-                    parent[v] = u
+            for v, *w in adj.get(u, []):  # lấy ds cạnh kề với u ra
+                if color[v] == 0: # nếu chưa cso màu thì 
+                    color[v] = -color[u]  # đổi màu v cha đỏ con xanh cha xanh con đỏ
+                    parent[v] = u 
                     queue.append(v)
                 elif color[v] == color[u]:
                     # Phát hiện mâu thuẫn màu -> Trích xuất chu trình lẻ
@@ -25,8 +26,8 @@ def check_bipartite(adj, n):
                         path_u.append(curr)
                         curr = parent[curr]
 
-                    path_v = []
-                    curr = v
+                    path_v = [] # lưu đỉnh từ u về đỉnh gốc
+                    curr = v # tạo con trỏ v 
                     while curr != -1:
                         path_v.append(curr)
                         curr = parent[curr]

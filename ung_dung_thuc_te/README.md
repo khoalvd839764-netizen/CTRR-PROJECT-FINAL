@@ -1,197 +1,194 @@
-# 🤖 BÁO CÁO MÔ TẢ ỨNG DỤNG THỰC TẾ: ROBOT HÚT BỤI & LAU NHÀ THÔNG MINH (SMART VACUUM ROBOT SIMULATION)
+# 🤖 REAL-WORLD APPLICATION: SMART VACUUM & MOPPING ROBOT SIMULATION
 
-> **Môn học**: Cấu Trúc Rời Rạc (Discrete Mathematics / Graph Theory)  
-> **Đề tài**: Vận dụng toàn diện 7 Thuật toán Đồ thị cốt lõi vào Bài toán Điều hướng và Tối ưu hóa Robot Hút Bụi Thông Minh trong Căn hộ Hiện đại.  
+> **Course**: Discrete Mathematics / Graph Theory  
+> **Topic**: Comprehensive application of 7 Core Graph Algorithms to Autonomous Navigation and Path Optimization for Smart Vacuum Robots in Modern Apartments.  
 > **Framework**: Python 3, Pygame, Matplotlib.  
-> **Mã nguồn**: Thư mục [`ung_dung_thuc_te/`](./ung_dung_thuc_te/)  
+> **Source Directory**: [`ung_dung_thuc_te/`](./)  
 
 ---
 
-## 📌 I. BỐI CẢNH THỰC TẾ & ĐẶT VẤN ĐỀ
+## 📌 I. REAL-WORLD CONTEXT & PROBLEM FORMULATION
 
-Trong kỷ nguyên nhà thông minh (*Smart Home*), các thiết bị Robot hút bụi lau nhà tự động (như Roborock, Ecovacs, Dreame, Roomba) phải đối mặt với nhiều bài toán tối ưu hóa phức tạp:
-1. **Tiết kiệm pin & Năng lượng**: Phải tìm đường ngắn nhất để đưa robot quay về trạm sạc (*Dock*) khi pin yếu.
-2. **Quy hoạch mạng lưới di chuyển**: Cần kết nối toàn bộ các điểm trọng yếu trong nhà với tổng chiều dài đường đi là nhỏ nhất.
-3. **Lập bản đồ tự động (SLAM)**: Khi vào nhà mới, robot cần quét Lidar theo từng tầng sóng để lập bản đồ địa hình.
-4. **Dọn dẹp chân tường & ngóc ngách**: Cần bám sát tường và các góc phòng sâu, tự biết quay lui (*Backtracking*) khi gặp ngõ cụt.
-5. **Dọn sạch 100% không lặp đường**: Đi qua toàn bộ các lối đi trong nhà đúng 1 lần duy nhất để tiết kiệm thời gian và chổi quét.
-6. **Phân vùng làm việc thông minh**: Tự động nhận diện vùng Sàn Khô (*Dry Zone* - phòng khách, phòng ngủ) để hút bụi và vùng Sàn Ướt (*Wet Zone* - bếp, ban công, toilet) để tự động hạ giẻ lau sàn.
-7. **Tối ưu hóa xả bụi & chống nghẽn**: Mạng lưới thu gom bụi từ các phòng dồn về hộp rác trung tâm với dung lượng luồng tối đa mà không gây nghẽn đường ống.
+In the modern smart home era, autonomous cleaning robots (such as Roborock, Ecovacs, Dreame, Roomba) face several critical graph optimization challenges:
+1. **Battery & Power Conservation**: Calculating the shortest obstacle-free path back to the charging dock when battery is low.
+2. **Infrastructure Planning**: Interconnecting all strategic cleaning waypoints with minimum total cable length.
+3. **Automated SLAM Mapping**: Incrementally mapping unknown spaces level-by-level using revolving Lidar sensor waves.
+4. **Perimeter & Corner Deep Cleaning**: Tracing walls and deep corners with guaranteed backtracking when hitting dead ends.
+5. **100% Non-Repetitive Full Coverage**: Traversing all corridors and walkways exactly once to maximize efficiency and brush lifespan.
+6. **Intelligent Floor Surface Zoning**: Classifying Dry Zones (living room, bedrooms) for vacuuming vs. Wet Zones (kitchen, balcony, restrooms) for wet mopping.
+7. **Dust Evacuation Throughput & Bottleneck Analysis**: Modeling pipe capacity from rooms to the main dustbin to identify bottlenecks (Min Cut).
 
-Dự án này đã **mô hình hóa toàn bộ căn hộ thực tế thành Đồ thị Toán học $G=(V, E)$** và áp dụng **đầy đủ 7 Thuật toán Cấu trúc rời rạc** để giải quyết triệt để các bài toán trên.
+This project **mathematically models an entire real-world apartment as a graph $G = (V, E)$** and applies **7 Core Discrete Mathematics Algorithms** to solve these challenges.
 
 ---
 
-## 🏠 II. MÔ HÌNH HÓA ĐỒ THỊ CĂN HỘ $G = (V, E)$
+## 🏠 II. APARTMENT GRAPH MODEL $G = (V, E)$
 
 ```
-                            [0] DOCK SẠC BASE
-                                    |
-                            [1] TỦ GIÀY FOYER
-                                    |
-     [PHÒNG KHÁCH]          [PHÒNG MASTER]          [PHÒNG TRẺ EM]
-   (Đỉnh 2, 3, 4, 5)       (Đỉnh 13, 14, 15, 16)   (Đỉnh 17, 18, 19, 20)
+                            [0] CHARGING DOCK BASE
+                                     |
+                            [1] FOYER SHOE CABINET
+                                     |
+     [LIVING ROOM]           [MASTER BEDROOM]        [KIDS BEDROOM]
+   (Nodes 2, 3, 4, 5)      (Nodes 13, 14, 15, 16)   (Nodes 17, 18, 19, 20)
            \                       |                       /
             \                      |                      /
-             -----> [10] HÀNH LANG BẮC --- [11] HÀNH LANG ĐÔNG <-----
+             -----> [10] NORTH CORRIDOR --- [11] EAST CORRIDOR <-----
                            |                      |
                            |                      |
-                    [PHÒNG BẾP & ĂN]       [12] HÀNH LANG NAM
-                    (Đỉnh 6, 7, 8, 9)             |
+                    [KITCHEN & DINING]     [12] SOUTH CORRIDOR
+                    (Nodes 6, 7, 8, 9)            |
                            |                      |
-                           -------------------> [BAN CÔNG & WC]
-                                               (Đỉnh 21, 22, 23, 24)
+                           -------------------> [BALCONY & WC]
+                                               (Nodes 21, 22, 23, 24)
 ```
 
-### 1. Tập 25 Đỉnh ($V$ - Waypoints)
-Mỗi đỉnh đại diện cho một vị trí quét dọn chiến lược, được đặt tại **vùng không gian thoáng (Free Space)**, cách xa mép vật cản ít nhất 15-20px:
-* **Khu vực Sảnh & Trạm sạc (Foyer & Dock)**:
-  * `[0] Dock Sạc Base`: Trạm sạc nguồn trung tâm (gốc tọa độ xuất phát).
-  * `[1] Tủ Giày Foyer`: Lối vào sảnh chính.
-* **Khu vực Phòng Khách (Living Room)**:
-  * `[2] Sofa Trái`, `[3] Sofa Phải`, `[4] Cửa Khách`, `[5] Bàn Trà`.
-* **Khu vực Phòng Bếp & Bàn Ăn (Kitchen & Dining)**:
-  * `[6] Cửa Bếp`, `[7] Bàn Ăn`, `[8] Bồn Rửa`, `[9] Bếp Nấu`.
-* **Khu vực Hành Lang Trung Tâm (Corridor Hub)**:
-  * `[10] Hành Lang Bắc` (kết nối Khách - Bếp).
-  * `[11] Hành Lang Đông` (kết nối Master - Trẻ Em).
-  * `[12] Hành Lang Nam` (kết nối Trẻ Em - Ban Công).
-* **Khu vực Phòng Ngủ Master (Master Bedroom)**:
-  * `[13] Cửa Master`, `[14] Giường Lớn`, `[15] Bàn Phấn`, `[16] Tủ Áo`.
-* **Khu vực Phòng Ngủ Trẻ Em (Kids Bedroom)**:
-  * `[17] Cửa Trẻ Em`, `[18] Bàn Học`, `[19] Giường Tầng`, `[20] Góc Đồ Chơi`.
-* **Khu vực Ban Công & WC (Balcony & Restroom)**:
-  * `[21] Cửa Ban Công`, `[22] Cây Cảnh`, `[23] Máy Giặt`, `[24] Góc WC`.
+### 1. Set of 25 Nodes ($V$ - Waypoints)
+Every node represents a strategic cleaning point situated in **navigable free space**, at least 15-20px away from furniture obstacles:
+* **Foyer & Dock Area**:
+  * `[0] Charging Dock Base`: Home origin and charging station.
+  * `[1] Foyer Shoe Cabinet`: Main entrance hall walkway.
+* **Living Room Area**:
+  * `[2] Left Sofa`, `[3] Right Sofa`, `[4] Living Room Door`, `[5] Tea Table`.
+* **Kitchen & Dining Area**:
+  * `[6] Kitchen Door`, `[7] Dining Table`, `[8] Sink Area`, `[9] Cooking Stove`.
+* **Central Corridor Hub**:
+  * `[10] North Corridor` (links Living Room and Kitchen).
+  * `[11] East Corridor` (links Master and Kids Bedrooms).
+  * `[12] South Corridor` (links Kids Bedroom and Balcony).
+* **Master Bedroom Area**:
+  * `[13] Master Bedroom Door`, `[14] King Bed`, `[15] Dressing Table`, `[16] Wardrobe`.
+* **Kids Bedroom Area**:
+  * `[17] Kids Room Door`, `[18] Study Desk`, `[19] Bunk Bed`, `[20] Toy Corner`.
+* **Balcony & Restroom Area**:
+  * `[21] Balcony Door`, `[22] Plants Area`, `[23] Washing Machine`, `[24] Restroom Corner`.
 
-### 2. Tập 36 Cung ($E$ - Lối đi thực tế)
-* Mỗi cung $(u, v)$ có trọng số $w(u, v)$ là khoảng cách di chuyển thực tế (mét) và dung lượng $cap(u, v)$ là sức chứa luồng bụi (gam/phút).
-* **Độ cong Bézier bậc 2**: Áp dụng vector pháp tuyến uốn cong các cung song song và giao nhau, đảm bảo **100% không bị đè nét, không thẳng hàng che khuất nhau**.
-* **Né vật cản 100%**: Mọi cung đường đi đều chạy vòng qua các khoảng trống giữa bàn trà, ghế sofa, tủ lạnh và giường ngủ.
+### 2. Set of 36 Edges ($E$ - Navigable Corridors)
+* Each edge $(u, v)$ has a weight $w(u, v)$ representing actual metric distance (meters) and capacity $cap(u, v)$ representing dust evacuation flow (grams/min).
+* **Quadratic Bézier Curvature**: Applies normal offset vectors to bend parallel and crossing edges, ensuring **100% non-overlapping visual topology**.
+* **Obstacle Avoidance**: All edge trajectories bypass furniture blocks (tables, sofas, beds, refrigerators).
 
 ---
 
-## 🧮 III. VẬN DỤNG CHI TIẾT 7 THUẬT TOÁN CẤU TRÚC RỜI RẠC
+## 🧮 III. 7 DISCRETE MATHEMATICS GRAPH ALGORITHMS APPLIED
 
-Toàn bộ 7 thuật toán đều được **tái sử dụng trực tiếp từ thư viện cốt lõi `core/`** (`core.mst`, `core.shortest_path`, `core.traversal`, `core.euler`, `core.bipartite`, `core.max_flow`):
+All 7 algorithms are **directly reused from the core library `core/`**:
 
 ```
 +-----------------------------------------------------------------------------------+
-|                           HỆ THỐNG 7 THUẬT TOÁN CTRR                              |
+|                        7 CORE GRAPH ALGORITHMS SYSTEM                             |
 +-------------------+--------------------------------+------------------------------+
-| Thuật Toán        | Hàm Tái Sử Dụng Từ core/       | Ứng Dụng Thực Tế             |
+| Algorithm         | Reused Function from core/     | Practical Application        |
 +-------------------+--------------------------------+------------------------------+
-| 1. Kruskal MST    | core.mst.kruskal (DSU)         | Quy hoạch tuyến dây sạc      |
-| 2. Dijkstra       | core.shortest_path.dijkstra    | Đường ngắn nhất về Dock sạc  |
-| 3. BFS SLAM       | core.traversal.bfs             | Quét Lidar mở rộng bản đồ    |
-| 4. DFS Men Tường  | core.traversal.dfs             | Quét sâu góc khuất + Quay lui|
-| 5. Euler Circuit  | core.euler.hierholzer          | Dọn sạch 100% cạnh đúng 1 lần|
-| 6. Bipartite 2 Phía| core.bipartite.check_bipartite | Phân chia sàn Khô / Ướt      |
-| 7. Max Flow & Cut | core.max_flow.ford_fulkerson   | Tối ưu hóa lưu lượng xả bụi  |
+| 1. Kruskal MST    | core.mst.kruskal (DSU)         | Charging grid wire planning  |
+| 2. Dijkstra       | core.shortest_path.dijkstra    | Emergency return to Dock     |
+| 3. BFS SLAM       | core.traversal.bfs             | Lidar wave-front mapping     |
+| 4. DFS Wall-Follow| core.traversal.dfs             | Deep perimeter cleaning      |
+| 5. Euler Circuit  | core.euler.hierholzer          | 100% path coverage once      |
+| 6. Bipartite Graph| core.bipartite.check_bipartite | Dry vs Wet floor zoning      |
+| 7. Max Flow & Cut | core.max_flow.ford_fulkerson   | Dust flow throughput & cut   |
 +-------------------+--------------------------------+------------------------------+
 ```
 
-### 1. Thuật toán Kruskal MST (Cây Khung Nhỏ Nhất)
-* **Ý nghĩa thực tế**: Quy hoạch mạng lưới đường trục chính liên kết trọn vẹn 25 điểm trong toàn bộ căn hộ sao cho **tổng khoảng cách dây dẫn sạc ngầm là ngắn nhất**.
-* **Bản chất toán học**:
-  * Sắp xếp 36 cạnh theo thứ tự trọng số tăng dần $w(u, v)$.
-  * Sử dụng cấu trúc dữ liệu **Disjoint Set Union (DSU)** với kỹ thuật nén đường đi (*Path Compression*) để kiểm tra xem 2 đỉnh $u, v$ đã cùng một tập hợp liên thông hay chưa.
-  * Nếu $find(u) \neq find(v)$, hợp nhất $union(u, v)$ và chọn cạnh vào cây khung. Ngược lại, loại bỏ vì tạo chu trình kín.
-* **Kết quả**: Chọn đúng $24$ cạnh kết nối $25$ đỉnh với tổng khoảng cách tối ưu nhất.
+### 1. Kruskal Minimum Spanning Tree (MST)
+* **Practical Purpose**: Interconnects all 25 waypoints across the apartment with **minimum total charging infrastructure cable length**.
+* **Mathematical Core**:
+  * Sorts 36 edges ascending by weight $w(u, v)$.
+  * Employs **Disjoint Set Union (DSU)** with path compression to test connectivity.
+  * If $find(u) \neq find(v)$, connects $union(u, v)$ and adds edge to MST. Otherwise, rejects edge to prevent cycles.
+* **Outcome**: Selects exactly $24$ edges connecting $25$ nodes with minimum total distance.
 
-### 2. Thuật toán Dijkstra (Tìm Đường Ngắn Nhất Về Sạc)
-* **Ý nghĩa thực tế**: Khi robot đang làm việc ở góc xa nhất của căn hộ (`[22] Cây Cảnh Ban Công`) và nhận cảnh báo pin yếu ($< 15\%$), thuật toán sẽ tính toán hành trình ngắn nhất để đưa robot quay về `[0] Dock Sạc Base`.
-* **Bản chất toán học**:
-  * Khởi tạo mảng khoảng cách $d[start] = 0$, các đỉnh khác bằng $\infty$.
-  * Duyệt chọn đỉnh $u$ chưa thăm có $d[u]$ nhỏ nhất, cập nhật nhãn khoảng cách cho các đỉnh kề $v$:
-    $$\text{Nếu } d[u] + w(u, v) < d[v] \implies d[v] = d[u] + w(u, v), \quad parent[v] = u$$
-* **Kết quả**: Tìm ra đường đi ngắn nhất: `[22] Cây Cảnh` ➔ `[21] Cửa Ban Công` ➔ `[12] Hành Lang Nam` ➔ `[10] Hành Lang Bắc` ➔ `[4] Cửa Khách` ➔ `[0] Dock Sạc`.
+### 2. Dijkstra Shortest Path (Return to Dock)
+* **Practical Purpose**: When battery falls below $15\%$ while cleaning at `[22] Plants Area`, computes the optimal obstacle-free route back to `[0] Charging Dock Base`.
+* **Mathematical Core**:
+  * Initializes distance labels $d[start] = 0$, all others $\infty$.
+  * Greedily selects unvisited node $u$ with minimum $d[u]$, relaxing adjacent nodes:
+    $$\text{If } d[u] + w(u, v) < d[v] \implies d[v] = d[u] + w(u, v), \quad parent[v] = u$$
+* **Outcome**: Shortest path: `[22]` ➔ `[21]` ➔ `[12]` ➔ `[10]` ➔ `[4]` ➔ `[0]`.
 
-### 3. Thuật toán BFS SLAM Map (Khám Phá Bản Đồ Mở Rộng)
-* **Ý nghĩa thực tế**: Mô phỏng cảm biến Lidar quay 360° quét phát hiện phòng mới. Sóng cảm biến lan truyền từ trạm sạc ra các phòng lân cận theo từng tầng khoảng cách.
-* **Bản chất toán học**:
-  * Sử dụng cấu trúc **Hàng đợi FIFO (Queue)**. Đỉnh nào được phát hiện trước sẽ được mở rộng trước.
-  * Đảm bảo mọi điểm trong phòng khách được lập bản đồ trước khi tiến sâu vào các phòng ngủ và ban công.
+### 3. BFS SLAM Mapping (Wavefront Exploration)
+* **Practical Purpose**: Simulates 360° revolving Lidar sensors expanding the digital map layer by layer from the dock to adjacent rooms.
+* **Mathematical Core**:
+  * Uses a **FIFO Queue**. Nodes discovered first are expanded first.
+  * Guarantees all living room areas are mapped before exploring bedrooms and balcony.
 
-### 4. Thuật toán DFS Men Tường (Dọn Dẹp Góc Khuất & Quay Lui)
-* **Ý nghĩa thực tế**: Robot bám sát mép tường để quét sạch bụi ở các góc phòng sâu. Khi đi hết một nhánh ngõ cụt (ví dụ góc tủ áo hoặc gầm giường), robot sẽ thực hiện **quay lui (Backtracking)** về ngã ba trước đó để tìm đường rẽ khác.
-* **Bản chất toán học**:
-  * Sử dụng giải thuật đệ quy tương đương cấu trúc **Ngăn xếp (Call Stack)**.
-  * Tích hợp bước trực quan hóa Backtracking: Robot di chuyển lùi ngược lại đỉnh cha $u$ thay vì dịch chuyển tức thời (*teleport*).
+### 4. DFS Wall-Following (Deep Perimeter Cleaning & Backtracking)
+* **Practical Purpose**: Traces room perimeters and tight corners. When reaching a dead end, the robot **backtracks** to the previous junction to continue.
+* **Mathematical Core**:
+  * Implements recursive depth traversal equivalent to a **Call Stack**.
+  * Features animated backtracking: the robot visually reverses to parent node $u$ rather than teleporting.
 
-### 5. Chu trình Euler Hierholzer (Quét Sạch 100% Cung Đường Đúng 1 Lần)
-* **Ý nghĩa thực tế**: Chế độ "Dọn dẹp tổng thể" (*Deep Clean*). Robot phải đi qua toàn bộ 36 cung đường trong nhà **đúng 1 lần duy nhất**, không bỏ sót đoạn nào và không đi lặp lại đoạn đã quét để tiết kiệm chổi than.
-* **Bản chất toán học**:
-  * Kiểm tra điều kiện Euler: Toàn bộ 25 đỉnh trong đồ thị đều có **bậc chẵn** ($deg(v) \in \{2, 4, 6\}$).
-  * Thuật toán **Hierholzer**: Bắt đầu từ `[0] Dock Sạc`, đi qua từng cạnh và xóa cạnh đã đi khỏi đồ thị, sau đó nối các chu trình con lại thành một chu trình Euler khép kín hoàn chỉnh gồm 36 bước.
+### 5. Hierholzer Euler Circuit (100% Full House Coverage)
+* **Practical Purpose**: Deep-cleaning mode traversing all 36 paths **exactly once**, eliminating redundant travel and brush wear.
+* **Mathematical Core**:
+  * Verifies Eulerian condition: all 25 vertices have **even degrees** ($deg(v) \in \{2, 4, 6\}$).
+  * Runs **Hierholzer's Algorithm**: starting at `[0] Dock`, removes traversed edges and splices sub-circuits into a complete 36-step Euler circuit.
 
-### 6. Đồ thị 2 Phía Bipartite (Phân Vùng Sàn Khô / Ướt)
-* **Ý nghĩa thực tế**: Robot tự động nhận diện mặt sàn để kích hoạt tính năng:
-  * **Tập V1 (Sàn Khô - DRY)**: Phòng Khách, Phòng Ngủ Master, Phòng Trẻ Em $\implies$ Chỉ bật động cơ Hút Bụi, nâng giẻ lau lên để không làm ướt thảm/sàn gỗ.
-  * **Tập V2 (Sàn Ướt - WET)**: Bếp, Ban Công, Nhà Vệ Sinh $\implies$ Hạ giẻ lau ướt và tăng công suất bơm nước.
-* **Bản chất toán học**:
-  * Tô màu 2 tập $0$ và $1$ bằng BFS. Nếu hai đỉnh kề nhau có cùng màu $\implies$ Phát hiện xung đột và trích xuất chu trình lẻ (*Odd Cycle*).
+### 6. Bipartite Graph Matching (Dry vs Wet Floor Partitioning)
+* **Practical Purpose**: Automatically adjusts cleaning mechanism based on floor type:
+  * **Set V1 (Dry Floor - DRY)**: Living Room, Master Bedroom, Kids Bedroom $\implies$ Vacuuming mode, lifts wet mop.
+  * **Set V2 (Wet Floor - WET)**: Kitchen, Balcony, Restrooms $\implies$ Lowers mop pad, increases water pump rate.
+* **Mathematical Core**:
+  * 2-color BFS test ($0$ and $1$). If adjacent nodes share the same color $\implies$ detects conflict and extracts odd cycle.
 
-### 7. Luồng Cực Đại Ford-Fulkerson & Lát Cắt Min Cut (Tối Ưu Xả Rác)
-* **Ý nghĩa thực tế**: Mạng lưới các họng xả bụi tự động từ các phòng gom về Hộp rác trung tâm (`[22]`). Xác định đoạn ống nghẽn nhất (*Bottleneck / Min Cut*) để cảnh báo người dùng vệ sinh ống dẫn.
-* **Bản chất toán học**:
-  * Thuật toán **Edmonds-Karp**: Tìm đường tăng luồng từ Nguồn $S=0$ đến Đích $T=22$ bằng BFS.
-  * Tìm dung lượng thặng dư nhỏ nhất $\Delta f = \min(c_f(u, v))$, tăng luồng dọc theo đường đi cho đến khi không còn đường tăng luồng.
-  * Xác định Lát cắt hẹp nhất $\text{Min Cut} = (S, T)$ có tổng dung lượng bằng đúng giá trị luồng cực đại $\text{Max Flow}$.
+### 7. Ford-Fulkerson Max Flow & Min Cut (Dust Evacuation Throughput)
+* **Practical Purpose**: Models automatic dust evacuation pipes from rooms to central bin `[22]`, identifying the bottleneck pipe (Min Cut) needing maintenance.
+* **Mathematical Core**:
+  * **Edmonds-Karp**: Finds augmenting paths from Source $S=0$ to Sink $T=22$ using BFS.
+  * Augments flow by bottleneck $\Delta f = \min(c_f(u, v))$ until no augmenting path remains.
+  * Identifies the bottleneck $\text{Min Cut} = (S, T)$ with capacity equal to $\text{Max Flow}$.
 
 ---
 
-## 🖥️ IV. GIAO DIỆN ĐA GÓC NHÌN (MULTI-VIEW DASHBOARD 3 CỘT)
+## 🖥️ IV. MULTI-VIEW 3-COLUMN DASHBOARD
 
-Giao diện được xây dựng trên nền tảng **Pygame** với độ phân giải chuẩn $1920 \times 1080$, chia làm 3 cột đồng bộ hóa thời gian thực:
+The **Pygame** dashboard runs at $1920 \times 1080$ Full-HD resolution, divided into 3 synchronized columns:
 
 ```
 +-----------------------------------------------------------------------------------------------------------+
-| [1] Kruskal MST | [2] Dijkstra | [3] BFS SLAM | [4] DFS Men Tường | [5] Euler | [6] 2 Phía | [7] Max-Flow |
+| [1] Kruskal MST | [2] Dijkstra | [3] BFS SLAM | [4] DFS Wall | [5] Euler | [6] Bipartite | [7] Max-Flow   |
 +------------------------------------+---------------------------------------+------------------------------+
-| 🏠 CỘT 1: SA BÀN 3D ISOMETRIC      | 📐 CỘT 2: ĐỒ THỊ TOÁN HỌC G = (V, E)  | 🔍 CỘT 3: BỘ SOI MÃ GIẢ      |
+| 🏠 COLUMN 1: 3D ISOMETRIC FLOORPLAN| 📐 COLUMN 2: MATHEMATICAL GRAPH G=(V,E)| 🔍 COLUMN 3: PSEUDOCODE & VARS|
 |                                    |                                       |                              |
-| - Phối cảnh 3D căn hộ 5 phòng      | - 25 Đỉnh & 36 Cung Bézier cong       | - Pseudocode Highlight dòng  |
-| - Nội thất 3D né vật cản 100%      | - Quả cầu năng lượng lướt đồng bộ     | - Live Variables: DSU, Queue,|
-| - Robot Roomba phát quang xoay 360°| - Nhãn mét lơ lửng không đè nét       |   Stack, Min-Cut, Khoảng cách|
-| - Phím điều khiển: Zoom, Pan, Xoay | - Màu sắc phân biệt Chấp nhận / Loại  | - Nút: [LÙI] [TIẾP] [TỰ ĐỘNG]|
+| - 3D 5-room apartment perspective  | - 25 Nodes & 36 Curved Bézier Edges   | - Active pseudocode highlight|
+| - Obstacle-free 3D furniture       | - Synchronized energy pulse ball      | - Live Variables: DSU, Queue,|
+| - Glowing Roomba with Lidar scan   | - Metric distance tags                |   Stack, Min-Cut, Distances  |
+| - Controls: Zoom, Pan, 360° Rotate | - Color-coded Accepted/Rejected edges | - Controls: [PREV] [NEXT] ...|
 +------------------------------------+---------------------------------------+------------------------------+
 ```
 
 ---
 
-## 🎮 V. HƯỚNG DẪN ĐIỀU KHIỂN & PHÍM TẮT
+## 🎮 V. CONTROLS & KEYBOARD SHORTCUTS
 
-| Phím Tắt / Thao Tác | Chức Năng |
+| Shortcut / Action | Function |
 | :--- | :--- |
-| **`Phím Số 1 .. 7`** | Chuyển đổi tức thì giữa 7 Thuật toán CTRR |
-| **`Phím Space`** | Bật / Tắt chế độ **Phát Tự Động (Auto-Play)** |
-| **`Phím S` hoặc `Mũi tên Phải`** | Tiến **1 Bước** thuật toán (*Step Next*) |
-| **`Phím B` hoặc `Mũi tên Trái`** | Lùi **1 Bước** thuật toán (*Step Previous*) |
-| **`Phím R`** | **Đặt lại (Reset)** thuật toán về bước 0 ban đầu |
-| **`Cuộn Chuột` / Phím `+` `-`** | Phóng to / Thu nhỏ Sa bàn 3D (Zoom 40% đến 300%) |
-| **`Phím 0`** | Đặt lại góc nhìn và Zoom chuẩn 95% |
-| **`Kéo Chuột Trái`** | Xoay góc nhìn 3D căn hộ 360° (*Orbit Yaw / Pitch*) |
-| **`Kéo Chuột Phải`** | Dời vị trí camera 3D (*Pan Camera*) |
-| **`Phím V`** | Chuyển đổi qua lại giữa chế độ **3D Isometric** và **2D Mặt bằng** |
-| **`Phím F11`** | Bật / Tắt chế độ **Toàn màn hình (Fullscreen)** |
+| **`Number Keys 1 .. 7`** | Switch immediately between the 7 Graph Algorithms |
+| **`Space Bar`** | Toggle **Auto-Play** simulation mode |
+| **`S` key or `Right Arrow`** | Advance **1 Step** (*Step Next*) |
+| **`B` key or `Left Arrow`** | Reverse **1 Step** (*Step Previous*) |
+| **`R` key** | **Reset** algorithm to Step 0 |
+| **`Mouse Wheel` / `+` `-`** | Zoom 3D view in/out (40% to 300%) |
+| **`0` key** | Reset camera zoom and pan to default |
+| **`Left Mouse Drag`** | Rotate 3D apartment camera 360° (*Orbit Yaw / Pitch*) |
+| **`Right Mouse Drag`** | Pan 3D camera (*Translate View*) |
+| **`V` key** | Toggle between **3D Isometric** and **2D Top-Down** view |
+| **`F11` key** | Toggle **Fullscreen Mode** |
 
 ---
 
-## 🚀 VI. HƯỚNG DẪN KHỞI CHẠY CHƯƠNG TRÌNH
+## 🚀 VI. HOW TO RUN
 
-Dự án sử dụng file **[`main.py`](file:///home/jackie-khoa/Downloads/course/CTRR%20FINAL%20PROJECT/main.py)** làm điểm khởi chạy duy nhất cho toàn bộ hệ thống:
+Launch the project from **[`main.py`](file:///home/jackie-khoa/Downloads/course/CTRR%20FINAL%20PROJECT/main.py)**:
 
-### 1. Mở Menu CLI Tổng Hợp (Đầy đủ 10 Chức năng)
+### 1. Launch Main CLI Menu (10 Functions)
 ```bash
 python3 main.py
 ```
-*(Tại Menu chính, chọn mục `10` để mở giao diện Robot Hút Bụi, hoặc chọn `1`..`9` để giải các bài toán đồ thị cơ bản & nâng cao)*
+*(Select option `10` from the menu to open the Robot Simulation, or options `1`..`9` for core graph theory modules)*
 
-### 2. Mở trực tiếp Giao diện Robot Hút Bụi 3D (Khuyên dùng khi thuyết trình)
+### 2. Launch Robot Simulation Dashboard Directly
 ```bash
 python3 main.py --robot
 ```
-*(Hoặc: `python3 main.py --gui`)*
-
----
-*Báo cáo được hoàn thiện chuẩn cấu trúc đồ án Cấu Trúc Rời Rạc.*
+*(Or: `python3 main.py --gui`)*

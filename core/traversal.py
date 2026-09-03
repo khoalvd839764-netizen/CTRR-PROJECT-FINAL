@@ -1,17 +1,17 @@
-def bfs(adj, n, start):
-    visited = [False] * n
+def bfs(adj, n, start, record_trace=True):
+    visited = [False] * n 
     parent = [-1] * n
     queue = [start]
     visited[start] = True
 
-    order = []
-    tree_edges = []
-    trace_table = []
+    order = []  # thứ tự đỉnh dượt duyet qua
+    tree_edges = []  # cac canh thuoc bfs
+    trace_table = [] # lich su qua tung buoc
 
     while len(queue) > 0:
         u = queue.pop(0)
         order.append(u)
-
+    # lấy các đỉnh với với u 
         neighbors = sorted([v for v, w in adj.get(u, [])])
         for v in neighbors:
             if not visited[v]:
@@ -20,12 +20,13 @@ def bfs(adj, n, start):
                 queue.append(v)
                 tree_edges.append((u, v))
 
-        trace_table.append({
-            "step": len(order),
-            "u": u,
-            "queue": list(queue),
-            "visited": list(visited)
-        })
+        if record_trace:
+            trace_table.append({
+                "step": len(order),
+                "u": u,
+                "queue": list(queue),
+                "visited": list(visited)
+            })
     return order, tree_edges, trace_table
 
 def dfs(adj, n, start):

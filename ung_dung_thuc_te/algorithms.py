@@ -1,17 +1,17 @@
 """
 Module: ung_dung_thuc_te/algorithms.py
-Mục đích: TÁI SỬ DỤNG 100% CÁC THUẬT TOÁN TỪ THƯ MỤC core/ CHO ỨNG DỤNG THỰC TẾ ROBOT HÚT BỤI:
-  1. core.mst.kruskal          -> Cây khung nhỏ nhất MST (Quy hoạch tuyến dây sạc).
-  2. core.shortest_path.dijkstra -> Đường đi ngắn nhất (Dijkstra về Dock khi pin yếu).
-  3. core.traversal.bfs        -> Duyệt theo chiều rộng (BFS SLAM mở rộng bản đồ).
-  4. core.traversal.dfs        -> Duyệt theo chiều sâu (DFS Men Tường quét ngóc ngách + Backtrack).
-  5. core.euler.hierholzer     -> Chu trình Euler (Hierholzer quét sạch 100% cạnh nhà).
-  6. core.bipartite.check_bipartite -> Kiểm tra đồ thị 2 phía (Phân vùng sàn Khô / Ướt).
-  7. core.max_flow.ford_fulkerson   -> Luồng cực đại & Lát cắt Min Cut (Mạng lưới xả bụi).
+Purpose: Reuses 100% of core algorithms from core/ for the Smart Vacuum Robot application:
+  1. core.mst.kruskal               -> Minimum Spanning Tree (MST power charging grid planning).
+  2. core.shortest_path.dijkstra    -> Shortest Path (Dijkstra emergency return to charging dock).
+  3. core.traversal.bfs             -> Breadth-First Search (BFS SLAM map exploration).
+  4. core.traversal.dfs             -> Depth-First Search (DFS wall-following + backtracking).
+  5. core.euler.hierholzer          -> Euler Circuit (Hierholzer 100% house path coverage).
+  6. core.bipartite.check_bipartite -> Bipartite Graph Check (Dry vs Wet floor zoning).
+  7. core.max_flow.ford_fulkerson   -> Max Flow & Min Cut (Dust evacuation pipe capacity).
 """
 
 # =============================================================================
-# IMPORT TRỰC TIẾP TỪ THƯ VIỆN THUẬT TOÁN GỐC (core/)
+# IMPORT DIRECTLY FROM CORE ALGORITHM LIBRARY (core/)
 # =============================================================================
 from core.mst import kruskal, DSU
 from core.shortest_path import dijkstra
@@ -25,43 +25,42 @@ from ung_dung_thuc_te.data_model import HOUSE_NODES_DATA, HOUSE_EDGES
 
 class RobotAlgorithms:
     """
-    Lớp điều hợp (Adapter Class) kết nối giữa Thư viện thuật toán cốt lõi (core/)
-    và Giao diện trực quan hóa ứng dụng thực tế của Robot Hút Bụi.
+    Adapter class connecting core mathematical algorithms (core/)
+    with the real-world vacuum robot simulation dashboard.
     """
     def __init__(self, n=25, edges=None, nodes_data=None):
         self.n = n
         self.edges = edges if edges is not None else HOUSE_EDGES
         self.nodes_data = nodes_data if nodes_data is not None else HOUSE_NODES_DATA
 
-        # 1. Định dạng Danh sách kề dạng dictionary cho core: {u: [(v, w), ...]}
+        # 1. Adjacency list dictionary for core: {u: [(v, w), ...]}
         self.adj_dict = {u: [] for u in range(self.n)}
         for u, v, l_m, cap in self.edges:
             self.adj_dict[u].append((v, l_m))
             self.adj_dict[v].append((u, l_m))
 
-        # Sắp xếp đỉnh kề tăng dần để duyệt tự nhiên
+        # Sort neighbors for deterministic traversal
         for u in range(self.n):
             self.adj_dict[u].sort(key=lambda x: x[0])
 
-        # 2. Định dạng Danh sách cạnh có trọng số cho core: [(u, v, w), ...]
+        # 2. Weighted edge list for core: [(u, v, w), ...]
         self.edges_with_weights = [(u, v, l_m) for u, v, l_m, cap in self.edges]
 
-        # 3. Định dạng Danh sách cạnh mạng luồng cho core: [(u, v, cap), ...]
+        # 3. Capacity edge list for core: [(u, v, cap), ...]
         self.edges_with_capacity = []
         for u, v, l_m, cap in self.edges:
             self.edges_with_capacity.append((u, v, cap))
             self.edges_with_capacity.append((v, u, cap))
 
     # =========================================================================
-    # THUẬT TOÁN 1: CÂY KHUNG NHỎ NHẤT (KRUSKAL MST)
-    # Tái sử dụng: core.mst.kruskal & core.mst.DSU
+    # ALGORITHM 1: MINIMUM SPANNING TREE (KRUSKAL MST)
+    # Reuses: core.mst.kruskal & core.mst.DSU
     # =========================================================================
     def build_kruskal_steps(self):
         """
-        Gọi trực tiếp thuật toán Kruskal từ core.mst và chuyển đổi trace_table
-        thành các bước trực quan cho Robot.
+        Calls Kruskal algorithm from core.mst and converts execution trace
+        into visual simulation steps for the robot.
         """
-        # Gọi thuật toán gốc từ core/
         mst_edges, total_weight, core_trace = kruskal(self.edges_with_weights, self.n)
 
         steps = []
@@ -86,23 +85,23 @@ class RobotAlgorithms:
                 "current_v": v,
                 "pseudocode_line": 5 if is_chosen else 6,
                 "pseudocode": [
-                    "1: [core.mst.kruskal] Sắp xếp cạnh tăng dần theo w(u,v)",
-                    "2: Khởi tạo DSU: mỗi đỉnh là 1 tập hợp riêng biệt",
-                    "3: Lặp qua từng cạnh (u, v):",
-                    "4:   Nếu find(u) != find(v): // Không tạo chu trình",
-                    "5:       union(u, v) -> CHỌN CẠNH VÀO CÂY KHUNG MST",
-                    "6:   Ngược lại: LOẠI BỎ CẠNH VÌ TẠO CHU TRÌNH"
+                    "1: [core.mst.kruskal] Sort edges ascending by w(u, v)",
+                    "2: Initialize DSU: each node in its own disjoint set",
+                    "3: For each edge (u, v):",
+                    "4:   If find(u) != find(v): // No cycle formed",
+                    "5:       union(u, v) -> ADD EDGE TO MST",
+                    "6:   Else: DISCARD EDGE (CREATES CYCLE)"
                 ],
                 "math_state": {
                     "DSU find(u)": root_u,
                     "DSU find(v)": root_v,
-                    "Số cạnh MST đã chọn": len(chosen) + (1 if is_chosen else 0),
-                    "Tổng khoảng cách MST": f"{accum_w + (w if is_chosen else 0):.1f}m"
+                    "MST Edges Selected": f"{len(chosen) + (1 if is_chosen else 0)} / {self.n - 1}",
+                    "Total MST Distance": f"{accum_w + (w if is_chosen else 0):.1f}m"
                 },
-                "action": "CHỌN CẠNH VÀO MST" if is_chosen else "LOẠI BỎ (TẠO CHU TRÌNH)",
+                "action": "SELECT EDGE FOR MST" if is_chosen else "REJECT (CYCLE DETECTED)",
                 "status_color": (52, 211, 153) if is_chosen else (239, 68, 68),
-                "reason": f"DSU: find({u}) != find({v}) ({root_u} != {root_v}) ➔ KHÔNG TẠO CHU TRÌNH." if is_chosen else f"DSU: find({u}) == find({v}) ({root_u}) ➔ TẠO CHU TRÌNH KÍN!",
-                "result_text": f"➔ CHỌN CẠNH ({u} ↔ {v}) (w = {w:.1f}m)! MST có {len(chosen)+1}/{self.n - 1} cạnh." if is_chosen else f"➔ BỎ QUA cạnh ({u} ↔ {v}) vì đã có đường nối gián tiếp.",
+                "reason": f"DSU: find({u}) != find({v}) ({root_u} != {root_v}) ➔ NO CYCLE." if is_chosen else f"DSU: find({u}) == find({v}) ({root_u}) ➔ CLOSES CYCLE!",
+                "result_text": f"➔ SELECTED ({u} ↔ {v}) (w = {w:.1f}m)! MST: {len(chosen)+1}/{self.n - 1} edges." if is_chosen else f"➔ SKIPPED ({u} ↔ {v}): Alternate path exists.",
                 "after_chosen": set(chosen),
                 "after_rejected": set(rejected),
                 "after_weight": accum_w
@@ -126,15 +125,14 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 2: ĐƯỜNG ĐI NGẮN NHẤT (DIJKSTRA)
-    # Tái sử dụng: core.shortest_path.dijkstra
+    # ALGORITHM 2: SHORTEST PATH (DIJKSTRA)
+    # Reuses: core.shortest_path.dijkstra
     # =========================================================================
     def build_dijkstra_steps(self, start=22, target=0):
         """
-        Gọi trực tiếp thuật toán Dijkstra từ core.shortest_path và sinh chuỗi bước
-        tối ưu nhãn khoảng cách đưa Robot về Dock sạc [0].
+        Calls Dijkstra algorithm from core.shortest_path and generates relaxation steps
+        to guide the Robot safely back to Dock [0].
         """
-        # Gọi thuật toán gốc từ core/
         result = dijkstra(self.adj_dict, self.n, start=start, end=target)
 
         steps = []
@@ -180,23 +178,23 @@ class RobotAlgorithms:
                     "current_v": v,
                     "pseudocode_line": 5 if is_relaxed else 6,
                     "pseudocode": [
-                        "1: [core.shortest_path.dijkstra] Chọn u có d[u] nhỏ nhất -> visited[u]=True",
-                        "2: Duyệt qua tất cả các đỉnh kề v của u:",
-                        "3:   Tính khoảng cách mới: alt = d[u] + weight(u, v)",
-                        "4:   Nếu alt < d[v]: // Tìm thấy đường ngắn hơn",
-                        "5:       d[v] = alt; parent[v] = u; // CẬP NHẬT NHÃN",
-                        "6:   Ngược lại: Giữ nguyên d[v]"
+                        "1: [core.shortest_path.dijkstra] Pick u with min d[u] -> visited[u]=True",
+                        "2: For each adjacent vertex v of u:",
+                        "3:   Calculate alt = d[u] + weight(u, v)",
+                        "4:   If alt < d[v]: // Found shorter path",
+                        "5:       d[v] = alt; parent[v] = u; // RELAX EDGE",
+                        "6:   Else: Keep existing d[v]"
                     ],
                     "math_state": {
-                        "Đỉnh đang xét u": u,
-                        "Khoảng cách d[u]": f"{dist[u]:.1f}m",
-                        f"Nhãn khoảng cách d[{v}]": f"{dist[v]:.1f}m",
-                        "Đỉnh cha parent[v]": parent[v]
+                        "Active node u": u,
+                        "Current d[u]": f"{dist[u]:.1f}m",
+                        f"Neighbor d[{v}]": f"{dist[v]:.1f}m",
+                        "Predecessor parent[v]": parent[v]
                     },
-                    "action": "CẬP NHẬT ĐƯỜNG NGẮN HƠN" if is_relaxed else "GIỮ NGUYÊN (KHÔNG TỐI ƯU)",
+                    "action": "UPDATE SHORTER PATH" if is_relaxed else "KEEP EXISTING (SUBOPTIMAL)",
                     "status_color": (56, 189, 248) if is_relaxed else (148, 163, 184),
-                    "reason": f"d[{u}] + w = {dist[u]:.1f} + {w:.1f} = {dist[u]+w:.1f}m < d[{v}] ({d_str})" if is_relaxed else f"Đường đi hiện tại qua [{v}] ({d_str}) đã tối ưu hơn.",
-                    "result_text": f"➔ TỐI ƯU: d[{v}] = {dist[v]:.1f}m (đi qua cửa [{u}])" if is_relaxed else f"➔ BỎ QUA cung ({u} ➔ {v}).",
+                    "reason": f"d[{u}] + w = {dist[u]:.1f} + {w:.1f} = {dist[u]+w:.1f}m < d[{v}] ({d_str})" if is_relaxed else f"Path via [{v}] ({d_str}) is already shorter or equal.",
+                    "result_text": f"➔ OPTIMIZED: d[{v}] = {dist[v]:.1f}m (via [{u}])" if is_relaxed else f"➔ IGNORED ({u} ➔ {v}).",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": dist[u]
@@ -207,15 +205,13 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 3: DUYỆT THEO CHIỀU RỘNG (BFS SLAM MAP)
-    # Tái sử dụng: core.traversal.bfs
+    # ALGORITHM 3: BREADTH-FIRST SEARCH (BFS SLAM MAP)
+    # Reuses: core.traversal.bfs
     # =========================================================================
     def build_bfs_steps(self, start=0):
         """
-        Gọi trực tiếp thuật toán BFS từ core.traversal để mô phỏng quét Lidar
-        lan truyền mở rộng bản đồ phòng.
+        Calls BFS from core.traversal to simulate Lidar wave expansion and map exploration.
         """
-        # Gọi thuật toán gốc từ core/
         order, core_tree_edges, trace_table = bfs(self.adj_dict, self.n, start=start)
 
         steps = []
@@ -244,23 +240,23 @@ class RobotAlgorithms:
                     "current_v": v,
                     "pseudocode_line": 5 if is_new else 6,
                     "pseudocode": [
-                        "1: [core.traversal.bfs] Khởi tạo Queue = [start], visited[start] = True",
-                        "2: Trong khi Queue không rỗng:",
+                        "1: [core.traversal.bfs] Init Queue = [start], visited[start] = True",
+                        "2: While Queue is not empty:",
                         "3:   u = Queue.pop(0)",
-                        "4:   Với mỗi đỉnh kề v của u:",
-                        "5:       Nếu not visited[v]:",
-                        "6:           visited[v] = True, Queue.append(v) -> CHỌN CẠNH BFS"
+                        "4:   For each neighbor v of u:",
+                        "5:       If not visited[v]:",
+                        "6:           visited[v] = True, Queue.append(v) -> ADD BFS EDGE"
                     ],
                     "math_state": {
-                        "Hàng đợi Queue FIFO": list(queue),
-                        "Đỉnh gốc u": u,
-                        "Trạng thái visited[v]": visited[v],
-                        "Số cung Cây khung BFS": len(tree_edges)
+                        "FIFO Queue": list(queue),
+                        "Source Node u": u,
+                        "Status visited[v]": visited[v],
+                        "BFS Tree Edges": len(tree_edges)
                     },
-                    "action": "CHỌN CẠNH KHÁM PHÁ (BFS)" if is_new else "ĐÃ THĂM TỪ TRƯỚC",
+                    "action": "DISCOVER NEW EDGE (BFS)" if is_new else "ALREADY VISITED",
                     "status_color": (56, 189, 248) if is_new else (148, 163, 184),
-                    "reason": f"Lidar quét từ [{u}] phát hiện cửa sang [{v}] CHƯA THĂM." if is_new else f"Điểm sàn [{v}] đã được quét thăm dò trước đó.",
-                    "result_text": f"➔ CHỌN CẠNH ({u} ↔ {v}) VÀO CÂY KHUNG BFS!" if is_new else f"➔ BỎ QUA cung ({u} ↔ {v}) tránh lặp vòng.",
+                    "reason": f"Lidar scan from [{u}] discovered UNVISITED door to [{v}]." if is_new else f"Waypoint [{v}] has already been surveyed.",
+                    "result_text": f"➔ ADDED ({u} ↔ {v}) TO BFS SPANNING TREE!" if is_new else f"➔ SKIPPED ({u} ↔ {v}) to prevent loop.",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": 0
@@ -269,15 +265,13 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 4: DUYỆT THEO CHIỀU SÂU (DFS MEN TƯỜNG)
-    # Tái sử dụng: core.traversal.dfs
+    # ALGORITHM 4: DEPTH-FIRST SEARCH (DFS WALL-FOLLOWING)
+    # Reuses: core.traversal.dfs
     # =========================================================================
     def build_dfs_steps(self, start=0):
         """
-        Gọi trực tiếp thuật toán DFS từ core.traversal và tích hợp thêm bước
-        Backtrack (Quay lui) trực quan để Robot rút lui chân thực.
+        Calls DFS from core.traversal and adds realistic Backtracking steps for the robot.
         """
-        # Gọi thuật toán gốc từ core/
         order, core_tree_edges, trace_table = dfs(self.adj_dict, self.n, start=start)
 
         steps = []
@@ -289,7 +283,7 @@ class RobotAlgorithms:
             visited[u] = True
             for v, l_m in self.adj_dict[u]:
                 if v == p:
-                    continue  # Không quét ngược lại cha vừa đi tới
+                    continue
 
                 edge_tuple = tuple(sorted((u, v)))
                 step_count[0] += 1
@@ -303,22 +297,22 @@ class RobotAlgorithms:
                     "current_v": v,
                     "pseudocode_line": 4 if is_new else 5,
                     "pseudocode": [
-                        "1: [core.traversal.dfs] Hàm DFS(u): visited[u] = True",
-                        "2: Với mỗi đỉnh kề v của u:",
-                        "3:   Nếu not visited[v]: DFS(v) -> ĐI TIẾP VÀO SÂU",
-                        "4:   Ngược lại: Đã thăm -> Bỏ qua",
-                        "5: ➔ Hết ngõ cụt: QUAY LUI (BACKTRACK) về cha u"
+                        "1: [core.traversal.dfs] Function DFS(u): visited[u] = True",
+                        "2: For each neighbor v of u:",
+                        "3:   If not visited[v]: DFS(v) -> ADVANCE DEEP",
+                        "4:   Else: Already visited -> Skip",
+                        "5: ➔ Dead end reached: BACKTRACK to parent u"
                     ],
                     "math_state": {
-                        "Đỉnh hiện tại u": u,
-                        "Đỉnh kề v": v,
-                        "Trạng thái visited[v]": visited[v],
-                        "Số cạnh Cây khung DFS": len(tree_edges) + (1 if is_new else 0)
+                        "Current Node u": u,
+                        "Neighbor Node v": v,
+                        "Status visited[v]": visited[v],
+                        "DFS Tree Edges": len(tree_edges) + (1 if is_new else 0)
                     },
-                    "action": "ĐI SÂU TIẾP (DFS TREE)" if is_new else "CẠNH NGƯỢC (BACK EDGE)",
+                    "action": "ADVANCE DEEPER (DFS TREE)" if is_new else "BACK EDGE (ALREADY VISITED)",
                     "status_color": (168, 85, 247) if is_new else (148, 163, 184),
-                    "reason": f"Phát hiện góc phòng mới [{v}] chưa quét men tường." if is_new else f"Góc [{v}] đã được dọn sạch men tường từ trước.",
-                    "result_text": f"➔ TIẾN VÀO [{v}]: Mở rộng nhánh duyệt sâu!" if is_new else f"➔ BỎ QUA cung ({u} ↔ {v}) vì gặp đỉnh đã thăm.",
+                    "reason": f"Discovered unvisited corner [{v}] along the perimeter." if is_new else f"Corner [{v}] has already been cleaned.",
+                    "result_text": f"➔ ENTER [{v}]: Expanding deep search branch!" if is_new else f"➔ SKIPPED ({u} ↔ {v}): Already visited node.",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": 0
@@ -329,7 +323,7 @@ class RobotAlgorithms:
                     tree_edges.add(edge_tuple)
                     dfs_visit(v, u)
 
-                    # BƯỚC QUAY LUI (BACKTRACK)
+                    # BACKTRACK STEP
                     step_count[0] += 1
                     backtrack_step = {
                         "step_num": step_count[0],
@@ -339,21 +333,21 @@ class RobotAlgorithms:
                         "current_v": u,
                         "pseudocode_line": 5,
                         "pseudocode": [
-                            "1: [core.traversal.dfs] Hàm DFS(u): visited[u] = True",
-                            "2: Với mỗi đỉnh kề v của u:",
-                            "3:   Nếu not visited[v]: DFS(v)",
+                            "1: [core.traversal.dfs] Function DFS(u): visited[u] = True",
+                            "2: For each neighbor v of u:",
+                            "3:   If not visited[v]: DFS(v)",
                             "4: ...",
-                            "5: ➔ Hết ngõ cụt tại v: QUAY LUI (BACKTRACK) về cha u"
+                            "5: ➔ Dead end at v: BACKTRACK to parent u"
                         ],
                         "math_state": {
-                            "Đỉnh ngõ cụt": v,
-                            "Quay lui về cha": u,
-                            "Trạng thái đệ quy": "Pop khỏi Call Stack"
+                            "Dead End Node": v,
+                            "Backtracking to Parent": u,
+                            "Call Stack State": "Popping from Call Stack"
                         },
-                        "action": "QUAY LUI (BACKTRACK)",
+                        "action": "BACKTRACK TO PARENT",
                         "status_color": (250, 204, 21),
-                        "reason": f"Đỉnh [{v}] đã quét sạch toàn bộ nhánh, rút lui về [{u}] để tìm ngã rẽ khác.",
-                        "result_text": f"➔ RÚT ROBOT từ [{v}] về [{u}] tiếp tục hành trình!",
+                        "reason": f"Node [{v}] branch fully explored, reversing to [{u}] for next corridor.",
+                        "result_text": f"➔ REVERSE ROBOT from [{v}] to [{u}]!",
                         "after_chosen": set(tree_edges),
                         "after_rejected": set(),
                         "after_weight": 0
@@ -364,15 +358,14 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 5: CHU TRÌNH EULER (HIERHOLZER)
-    # Tái sử dụng: core.euler.hierholzer & core.euler.check_eulerian
+    # ALGORITHM 5: EULER CIRCUIT (HIERHOLZER FULL COVERAGE)
+    # Reuses: core.euler.hierholzer & core.euler.check_eulerian
     # =========================================================================
     def build_euler_steps(self):
         """
-        Gọi trực tiếp thuật toán Hierholzer từ core.euler để tạo chu trình
-        quét sạch 100% các đoạn đường trong nhà đúng 1 lần duy nhất.
+        Calls Hierholzer from core.euler to create a circuit covering 100% of corridors
+        exactly once.
         """
-        # Gọi thuật toán gốc từ core/
         tour, tour_edges, trace_table = hierholzer(self.adj_dict, self.n, start=0)
 
         steps = []
@@ -398,22 +391,22 @@ class RobotAlgorithms:
                 "current_v": v,
                 "pseudocode_line": 3,
                 "pseudocode": [
-                    "1: [core.euler.hierholzer] Kiểm tra: Bậc mọi đỉnh đều chẵn",
-                    "2: Khởi tạo Stack = [0], Tour = []",
-                    "3: Lặp: Đi qua cạnh (u, v) và XÓA CẠNH ĐÃ ĐI khỏi đồ thị",
-                    "4: Nếu gặp đỉnh hết cạnh kề: Đẩy đỉnh vào Tour",
-                    "5: Ghép chu trình con ➔ Chu trình Euler hoàn chỉnh"
+                    "1: [core.euler.hierholzer] Verify: All vertex degrees are even",
+                    "2: Init Stack = [0], Tour = []",
+                    "3: Loop: Traverse (u, v) and REMOVE VISITED EDGE",
+                    "4: If vertex has no remaining edges: Push to Tour",
+                    "5: Splice sub-circuits ➔ Complete Euler Circuit"
                 ],
                 "math_state": {
-                    "Bước đi cạnh": f"{idx + 1}/{len(tour_edges)}",
-                    "Đoạn vừa quét": f"({u} ➔ {v})",
-                    "Tổng quãng đường Euler": f"{total_dist:.1f}m",
-                    "Tỷ lệ phủ sàn nhà": f"{len(chosen)}/36 cung ({(len(chosen)/36)*100:.0f}%)"
+                    "Edge Step": f"{idx + 1} / {len(tour_edges)}",
+                    "Traversed Edge": f"({u} ➔ {v})",
+                    "Total Euler Distance": f"{total_dist:.1f}m",
+                    "Floor Coverage": f"{len(chosen)}/36 edges ({(len(chosen)/36)*100:.0f}%)"
                 },
-                "action": "QUÉT CUNG EULER (1 LẦN DUY NHẤT)",
+                "action": "TRAVERSE EULER EDGE (EXACTLY ONCE)",
                 "status_color": (250, 204, 21),
-                "reason": f"Dọn sạch cung ({u} ↔ {v}) và xóa khỏi đồ thị để không bị đi lặp lại.",
-                "result_text": f"➔ QUÉT SẠCH ({u} ➔ {v})! Đã dọn {len(chosen)}/36 đoạn sàn.",
+                "reason": f"Cleaned segment ({u} ↔ {v}) and removed from graph to avoid repetition.",
+                "result_text": f"➔ COVERED ({u} ➔ {v})! Cleaned {len(chosen)}/36 floor paths.",
                 "after_chosen": set(chosen),
                 "after_rejected": set(),
                 "after_weight": total_dist
@@ -422,15 +415,14 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 6: KIỂM TRA ĐỒ THỊ 2 PHÍA (BIPARTITE MATCHING)
-    # Tái sử dụng: core.bipartite.check_bipartite
+    # ALGORITHM 6: BIPARTITE GRAPH CHECK (FLOOR ZONING)
+    # Reuses: core.bipartite.check_bipartite
     # =========================================================================
     def build_bipartite_steps(self):
         """
-        Gọi trực tiếp thuật toán kiểm tra 2 phía từ core.bipartite để phân vùng
-        sàn Khô (Hút bụi) và sàn Ướt (Lau sàn).
+        Calls bipartite verification from core.bipartite to partition floor
+        into Dry Zone (Vacuum only) vs Wet Zone (Mop enabled).
         """
-        # Gọi thuật toán gốc từ core/
         bip_res = check_bipartite(self.adj_dict, self.n)
 
         steps = []
@@ -461,8 +453,8 @@ class RobotAlgorithms:
                             is_conflict = False
                             chosen_edges.add(edge_tuple)
 
-                        u_zone = "KHÔ (DRY)" if color[u] == 0 else "ƯỚT (WET)"
-                        v_zone = "KHÔ (DRY)" if color[v] == 0 else ("ƯỚT (WET)" if color[v] == 1 else "CHƯA XẾP")
+                        u_zone = "DRY FLOOR" if color[u] == 0 else "WET FLOOR"
+                        v_zone = "DRY FLOOR" if color[v] == 0 else ("WET FLOOR" if color[v] == 1 else "UNASSIGNED")
 
                         step_data = {
                             "step_num": step_count,
@@ -472,22 +464,22 @@ class RobotAlgorithms:
                             "current_v": v,
                             "pseudocode_line": 3 if not is_conflict else 4,
                             "pseudocode": [
-                                "1: [core.bipartite.check_bipartite] Gán color[start] = 0 (Tập Khô)",
-                                "2: Với mỗi đỉnh kề v của u:",
-                                "3:   Nếu v chưa tô màu: color[v] = 1 - color[u] (Tập Ướt)",
-                                "4:   Nếu color[v] == color[u]: PHÁT HIỆN XUNG ĐỘT (Chu trình lẻ)",
-                                "5: Kết luận: Phân chia 2 chế độ lau dọn độc lập"
+                                "1: [core.bipartite.check_bipartite] Assign color[start] = 0 (Dry)",
+                                "2: For each neighbor v of u:",
+                                "3:   If v uncolored: color[v] = 1 - color[u] (Wet)",
+                                "4:   If color[v] == color[u]: CONFLICT (Odd cycle detected)",
+                                "5: Conclusion: Partition into 2 independent cleaning modes"
                             ],
                             "math_state": {
-                                f"Tô màu đỉnh u [{u}]": u_zone,
-                                f"Tô màu đỉnh v [{v}]": v_zone,
-                                "Số đỉnh tập Khô (V1)": sum(1 for c in color if c == 0),
-                                "Số đỉnh tập Ướt (V2)": sum(1 for c in color if c == 1)
+                                f"Color Node u [{u}]": u_zone,
+                                f"Color Node v [{v}]": v_zone,
+                                "Dry Zone Nodes (V1)": sum(1 for c in color if c == 0),
+                                "Wet Zone Nodes (V2)": sum(1 for c in color if c == 1)
                             },
-                            "action": "PHÂN CHIA VÙNG HỢP LỆ" if not is_conflict else "XUNG ĐỘT CHU TRÌNH LẺ",
+                            "action": "VALID 2-COLORING" if not is_conflict else "ODD CYCLE CONFLICT",
                             "status_color": (236, 72, 153) if not is_conflict else (239, 68, 68),
-                            "reason": f"Tô màu đối lập: [{u}]={u_zone} ↔ [{v}]={v_zone}." if not is_conflict else f"Xung đột! Hai đỉnh kề [{u}] và [{v}] cùng màu {u_zone}.",
-                            "result_text": f"➔ HỢP LỆ: Chuyển đầu hút/lau tương thích giữa 2 vùng." if not is_conflict else "➔ Phát hiện chu trình lẻ liên phòng!",
+                            "reason": f"Opposite colors: [{u}]={u_zone} ↔ [{v}]={v_zone}." if not is_conflict else f"Conflict! Adjacent nodes [{u}] and [{v}] have same color {u_zone}.",
+                            "result_text": f"➔ VALID: Swap vacuum/mop attachments between zones." if not is_conflict else "➔ Odd cycle detected across rooms!",
                             "after_chosen": set(chosen_edges),
                             "after_rejected": set(),
                             "after_weight": 0
@@ -496,15 +488,14 @@ class RobotAlgorithms:
         return steps
 
     # =========================================================================
-    # THUẬT TOÁN 7: LUỒNG CỰC ĐẠI FORD-FULKERSON & MIN CUT
-    # Tái sử dụng: core.max_flow.ford_fulkerson
+    # ALGORITHM 7: MAX FLOW FORD-FULKERSON & MIN CUT
+    # Reuses: core.max_flow.ford_fulkerson
     # =========================================================================
     def build_maxflow_steps(self, source=0, sink=22):
         """
-        Gọi trực tiếp thuật toán Ford-Fulkerson từ core.max_flow để tìm
-        luồng xả rác cực đại và lát cắt nghẽn nhất Min Cut.
+        Calls Ford-Fulkerson from core.max_flow to find maximum dust evacuation throughput
+        and bottleneck Min Cut.
         """
-        # Gọi thuật toán gốc từ core/
         max_flow, flow_mat, min_cut, cut_sets, core_trace = ford_fulkerson(
             self.edges_with_capacity, self.n, source=source, sink=sink
         )
@@ -540,22 +531,22 @@ class RobotAlgorithms:
                     "current_v": v,
                     "pseudocode_line": 4,
                     "pseudocode": [
-                        "1: [core.max_flow.ford_fulkerson] Khởi tạo luồng f(u,v) = 0",
-                        "2: Lặp: Tìm đường tăng luồng từ Nguồn S đến Đích T (BFS)",
-                        "3:   Tính độ nghẽn Δf = min(residual capacity)",
-                        "4:   Tăng luồng: f(u,v) += Δf dọc theo đường tăng luồng",
-                        "5: ➔ Khi hết đường tăng: Max Flow = Min Cut"
+                        "1: [core.max_flow.ford_fulkerson] Init flow f(u, v) = 0",
+                        "2: Loop: Find augmenting path from S to T (BFS)",
+                        "3:   Bottleneck Δf = min(residual capacity)",
+                        "4:   Augment flow: f(u, v) += Δf along the path",
+                        "5: ➔ When no path remains: Max Flow = Min Cut"
                     ],
                     "math_state": {
-                        "Đường tăng luồng": " ➔ ".join(map(str, path)),
-                        "Độ nghẽn tăng luồng (Δf)": f"{bottleneck} gam/phút",
-                        "Tổng luồng xả rác cực đại": f"{total_max_flow} gam/phút",
-                        "Cung đang bơm luồng": f"({u} ➔ {v}) [+{bottleneck}/{cap}]"
+                        "Augmenting Path": " ➔ ".join(map(str, path)),
+                        "Bottleneck Capacity (Δf)": f"{bottleneck} g/min",
+                        "Max Flow Throughput": f"{total_max_flow} g/min",
+                        "Pumping Path Segment": f"({u} ➔ {v}) [+{bottleneck}/{cap}]"
                     },
-                    "action": "BƠM TĂNG LUỒNG XẢ RÁC",
+                    "action": "AUGMENT DUST FLOW",
                     "status_color": (248, 113, 113),
-                    "reason": f"Đường tăng luồng {path} có độ nghẽn {bottleneck} gam/phút.",
-                    "result_text": f"➔ BƠM THÊM {bottleneck} gam/phút qua ({u} ➔ {v})!",
+                    "reason": f"Augmenting path {path} has bottleneck capacity {bottleneck} g/min.",
+                    "result_text": f"➔ PUMPED +{bottleneck} g/min via ({u} ➔ {v})!",
                     "after_chosen": set(chosen_edges),
                     "after_rejected": set(),
                     "after_weight": total_max_flow

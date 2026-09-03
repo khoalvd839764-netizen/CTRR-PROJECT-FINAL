@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # 1. BÀI MẪU 1: ĐỒ THỊ VÔ HƯỚNG 20 ĐỈNH (BỐ CỤC 3 TẦNG ĐỒNG TÂM - 38 CẠNH)
-GRAPH_UNDIRECTED_20 = {
+GRAPH_UNDIRECTED_20 = { 
     "n": 20,
     "directed": False,
     "edges": [

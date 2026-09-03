@@ -1,17 +1,27 @@
 """
 Module: ung_dung_thuc_te/gui_dashboard.py
-Mục đích: Giao diện trực quan hóa Đa góc nhìn (Multi-view Dashboard) 3 Cột chuẩn Full-HD
-cho Ứng Dụng Thực Tế Robot Hút Bụi Thông Minh.
-Tương thích hoàn hảo với chế độ Toàn Màn Hình (Fullscreen) và Tự Động Co Giãn (Hardware Scaled):
-  - CỘT 1 (Trái): Sa Bàn Căn Hộ 3D Isometric (Xoay 360°, Zoom 40%-300%, Nội thất 3D né vật cản, Robot phát quang).
-  - CỘT 2 (Giữa): Đồ Thị Toán Học G = (V, E) (25 đỉnh, 36 cung cong Bézier không đè nét, quả cầu năng lượng).
-  - CỘT 3 (Phải): Bộ Soi Mã Giả & Biến Trực Tiếp (Pseudocode Line Highlight, Live DSU/Queue/Stack/Flow, Bảng điều khiển).
+Purpose: Multi-view Full-HD 3-Column Dashboard for the Smart Vacuum Robot Simulation.
+Compatible with Fullscreen and Hardware Scaling on Windows, macOS, and Linux:
+  - COLUMN 1 (Left): 3D Isometric Apartment (360° rotation, 40%-300% zoom, 3D obstacle avoidance, glowing robot).
+  - COLUMN 2 (Center): Mathematical Graph G = (V, E) (25 nodes, 36 non-overlapping Bézier curved edges, energy pulse).
+  - COLUMN 3 (Right): Live Pseudocode & Mathematical Variable Inspector (Line highlighting, real-time DSU/Queue/Flow).
 """
 
 import sys
 import math
-import pygame
 import os
+import pygame
+
+# Enable Per-Monitor DPI Awareness on Windows to prevent coordinate distortion
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
 
 from ung_dung_thuc_te.data_model import (
     HOUSE_NODES_DATA, HOUSE_BASE_COORDS, HOUSE_EDGES,
@@ -20,13 +30,13 @@ from ung_dung_thuc_te.data_model import (
 from ung_dung_thuc_te.algorithms import RobotAlgorithms
 
 # =============================================================================
-# CẤU HÌNH KÍCH THƯỚC VÀ MÀU SẮC GIAO DIỆN CHUẨN DASHBOARD
+# CANVAS AND UI LAYOUT CONFIGURATION
 # =============================================================================
 CANVAS_WIDTH = 1920
 CANVAS_HEIGHT = 1080
 FPS = 60
 
-# Bố cục 3 Cột chuẩn pixel-perfect
+# 3-Column Layout
 COL_Y = 52
 COL_HEIGHT = 1014
 
@@ -39,7 +49,7 @@ COL2_WIDTH = 730
 COL3_X = 1338
 COL3_WIDTH = 568
 
-# Bảng màu Dark Cyber UI cao cấp
+# Dark Cyber UI Palette
 COLOR_APP_BG = (10, 15, 29)
 COLOR_CARD_BG = (17, 24, 39)
 COLOR_CARD_BORDER = (31, 41, 55)
@@ -53,10 +63,10 @@ COLOR_TEXT_RED = (248, 113, 113)
 COLOR_TEXT_MUTED = (148, 163, 184)
 
 
-def get_vietnamese_font(size, bold=False):
-    """Tải font hỗ trợ đầy đủ dấu tiếng Việt Unicode chuẩn UTF-8."""
+def get_ui_font(size, bold=False):
+    """Loads cross-platform typography font supporting Unicode."""
     candidates = [
-        "dejavusans", "liberationsans", "notosans", "arial", "segoeui", "tahoma"
+        "segoeui", "arial", "dejavusans", "liberationsans", "notosans", "tahoma", "helvetica"
     ]
     for font_name in candidates:
         try:
@@ -70,12 +80,12 @@ def get_vietnamese_font(size, bold=False):
 
 class SmartRobotSimulationApp:
     """
-    Lớp điều phối toàn bộ Ứng Dụng Thực Tế Robot Hút Bụi Thông Minh.
-    Sử dụng Virtual Canvas 1920x1080 với Hardware Scaling để Fullscreen hoàn hảo trên mọi màn hình.
+    Coordinator class for the Smart Vacuum Robot Practical Simulation.
+    Uses Virtual Canvas 1920x1080 with Hardware Scaling for fullscreen fidelity.
     """
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("ROBOT HÚT BỤI THÔNG MINH — ỨNG DỤNG THỰC TẾ CTRR 100%")
+        pygame.display.set_caption("SMART VACUUM ROBOT — REAL-WORLD GRAPH THEORY DASHBOARD")
 
         self.is_fullscreen = False
         self.screen = pygame.display.set_mode(
@@ -83,60 +93,61 @@ class SmartRobotSimulationApp:
         )
         self.clock = pygame.time.Clock()
 
-        # Hệ thống Font chữ phân cấp
-        self.font_title = get_vietnamese_font(15, bold=True)
-        self.font_main = get_vietnamese_font(13, bold=True)
-        self.font_body = get_vietnamese_font(11, bold=False)
-        self.font_code = get_vietnamese_font(11, bold=True)
-        self.font_tag = get_vietnamese_font(10, bold=True)
-        self.font_small = get_vietnamese_font(10, bold=False)
+        # Typography hierarchy
+        self.font_title = get_ui_font(15, bold=True)
+        self.font_main = get_ui_font(13, bold=True)
+        self.font_body = get_ui_font(11, bold=False)
+        self.font_code = get_ui_font(11, bold=True)
+        self.font_tag = get_ui_font(10, bold=True)
+        self.font_small = get_ui_font(10, bold=False)
 
-        # Mô hình Dữ liệu căn hộ
+        # Apartment Data Model
         self.nodes_data = dict(HOUSE_NODES_DATA)
         self.base_coords = dict(HOUSE_BASE_COORDS)
         self.edges = list(HOUSE_EDGES)
         self.n = len(self.nodes_data)
         self.curvatures = {tuple(sorted(k)): v for k, v in EDGE_CURVATURE.items()}
 
-        # Khởi tạo Bộ sinh thuật toán (Tái sử dụng 100% core/)
-        self.algo_engine = RobotAlgorithms(n=self.n, edges=self.edges, nodes_data=self.nodes_data)
+        # Core Algorithm Engine
+        self.algo_engine = RobotAlgorithms(self.n, self.edges, self.nodes_data)
 
-        # Camera 3D & Điều khiển Zoom / Pan
-        self.is_3d_mode = True
-        self.cam_yaw = 45.0
-        self.cam_pitch = 38.0
-        self.cam_zoom = 1.15
-        self.cam_pan_x = 0
-        self.cam_pan_y = 0
-        self.is_dragging_3d = False
-        self.is_panning_3d = False
-        self.last_mouse_pos = (0, 0)
-
-        # Trạng thái Mô phỏng
+        # Active Mode & Step Tracker
         self.active_mode = "MST"
         self.steps = []
         self.current_step_idx = 0
         self.is_auto_playing = False
         self.auto_timer = 0
-        self.pulse_val = 0.0
+
+        # Camera & 3D Isometric Projection
+        self.is_3d_mode = True
+        self.cam_zoom = 1.15
+        self.cam_yaw = 38.0
+        self.cam_pitch = 38.0
+        self.cam_pan_x = 0
+        self.cam_pan_y = 0
+
+        # Interactive state
+        self.is_dragging_3d = False
+        self.is_panning_3d = False
+        self.last_mouse_pos = (0, 0)
         self.lidar_angle = 0.0
 
-        # Animation lướt mượt mà giữa các điểm (0.0 -> 1.0)
+        # Animation interpolation (0.0 -> 1.0)
         self.anim_t = 1.0
         self.anim_speed = 0.035
 
-        # Danh sách Nút Menu Chế độ Top Bar
+        # Top Bar Algorithm Menu Buttons
         self.top_buttons = []
         self.init_top_buttons()
 
-        # Nút điều khiển Zoom / Pan / 3D ở Cột 1
+        # Column 1 Zoom / View Controls
         top_btn_y = COL_Y + 8
         self.btn_view_3d_rect = pygame.Rect(COL1_X + COL1_WIDTH - 76, top_btn_y, 66, 26)
         self.btn_zoom_in_rect = pygame.Rect(COL1_X + COL1_WIDTH - 106, top_btn_y, 26, 26)
         self.btn_zoom_badge_rect = pygame.Rect(COL1_X + COL1_WIDTH - 162, top_btn_y, 52, 26)
         self.btn_zoom_out_rect = pygame.Rect(COL1_X + COL1_WIDTH - 192, top_btn_y, 26, 26)
 
-        # Nút điều khiển Bước ở Cột 3
+        # Column 3 Step Controls
         ctrl_btn_y = COL_Y + COL_HEIGHT - 46
         self.btn_prev_rect = pygame.Rect(COL3_X + 12, ctrl_btn_y, 90, 36)
         self.btn_next_rect = pygame.Rect(COL3_X + 108, ctrl_btn_y, 110, 36)
@@ -144,32 +155,77 @@ class SmartRobotSimulationApp:
         self.btn_reset_rect = pygame.Rect(COL3_X + 370, ctrl_btn_y, 80, 36)
         self.btn_fullscreen_rect = pygame.Rect(COL3_X + 456, ctrl_btn_y, COL3_WIDTH - 12 - 456, 36)
 
-        # Khởi động thuật toán mặc định
+        # Start default mode
         self.switch_mode("MST")
 
     def init_top_buttons(self):
-        """Khởi tạo 7 nút chọn nhanh thuật toán trên thanh Top Bar."""
+        """Initializes 7 quick-access algorithm buttons on the Top Bar."""
         modes = [
             ("[1] Kruskal MST", "MST", (52, 211, 153)),
-            ("[2] Dijkstra Về Sạc", "DIJKSTRA", (56, 189, 248)),
+            ("[2] Dijkstra Return", "DIJKSTRA", (56, 189, 248)),
             ("[3] BFS SLAM Map", "BFS", (14, 165, 233)),
-            ("[4] DFS Quét Sâu", "DFS", (168, 85, 247)),
-            ("[5] Euler Toàn Nhà", "EULER", (250, 204, 21)),
-            ("[6] Đồ Thị 2 Phía", "BIPARTITE", (236, 72, 153)),
-            ("[7] Max-Flow Hộp Rác", "MAXFLOW", (248, 113, 113))
+            ("[4] DFS Wall-Follow", "DFS", (168, 85, 247)),
+            ("[5] Euler Full House", "EULER", (250, 204, 21)),
+            ("[6] Bipartite Zones", "BIPARTITE", (236, 72, 153)),
+            ("[7] Max-Flow Dust", "MAXFLOW", (248, 113, 113))
         ]
         btn_gap = 8
         btn_w = (CANVAS_WIDTH - 28 - 6 * btn_gap) // 7
-        btn_h = 36
+        btn_h = 38
         buttons = []
         for i, (label, mode_id, color) in enumerate(modes):
             bx = 14 + i * (btn_w + btn_gap)
-            rect = pygame.Rect(bx, 8, btn_w, btn_h)
+            rect = pygame.Rect(bx, 6, btn_w, btn_h)
             buttons.append((rect, label, mode_id, color))
         self.top_buttons = buttons
 
+    def to_canvas_pos(self, pos):
+        """
+        Converts physical window coordinates to 1920x1080 canvas coordinates.
+        Accounts for letterboxing/pillarboxing and hardware scaling on Windows/Linux/macOS.
+        """
+        if pos is None:
+            return (0, 0)
+        win_w, win_h = pygame.display.get_window_size()
+        if win_w <= 0 or win_h <= 0 or (win_w == CANVAS_WIDTH and win_h == CANVAS_HEIGHT):
+            return pos
+
+        scale = min(win_w / CANVAS_WIDTH, win_h / CANVAS_HEIGHT)
+        if scale <= 0:
+            return pos
+
+        offset_x = (win_w - CANVAS_WIDTH * scale) / 2.0
+        offset_y = (win_h - CANVAS_HEIGHT * scale) / 2.0
+
+        cx = (pos[0] - offset_x) / scale
+        cy = (pos[1] - offset_y) / scale
+        return (cx, cy)
+
+    def is_rect_hit(self, rect, event=None, mouse_pos=None, inflate_x=4, inflate_y=8):
+        """
+        Robust hit detection checking direct coordinates and canvas-transformed coordinates.
+        Solves Pygame SCALED mouse coordinate mismatch on Windows high-DPI displays.
+        """
+        target = rect.inflate(inflate_x, inflate_y) if (inflate_x or inflate_y) else rect
+        candidates = []
+        if event is not None and hasattr(event, "pos"):
+            candidates.append(event.pos)
+            candidates.append(self.to_canvas_pos(event.pos))
+        if mouse_pos is not None:
+            candidates.append(mouse_pos)
+            candidates.append(self.to_canvas_pos(mouse_pos))
+        else:
+            raw_pos = pygame.mouse.get_pos()
+            candidates.append(raw_pos)
+            candidates.append(self.to_canvas_pos(raw_pos))
+
+        for pt in candidates:
+            if target.collidepoint(pt):
+                return True
+        return False
+
     def get_column1_pos(self, node_id, z=0):
-        """Chiếu điểm (x, y, z) của Căn hộ sang tọa độ màn hình ở Cột 1 (3D Isometric hoặc 2D)."""
+        """Projects (x, y, z) apartment coordinates to Column 1 screen space."""
         base_x, base_y = self.base_coords[node_id]
         cx = COL1_WIDTH // 2 + self.cam_pan_x
         cy = COL_HEIGHT // 2 + self.cam_pan_y
@@ -178,145 +234,146 @@ class SmartRobotSimulationApp:
             center_x, center_y = 290, 410
             sx = cx + (base_x + 15 - center_x) * self.cam_zoom
             sy = cy + (base_y + 15 - center_y) * self.cam_zoom
-            return int(sx), int(sy)
+            return (int(sx), int(sy))
 
-        return self.get_3d_point(base_x, base_y, z, cx, cy)
-
-    def get_3d_point(self, x, y, z, cx, cy):
-        """Công thức phép chiếu 3D Isometric chuẩn: Xoay quanh trục Yaw và nghiêng Pitch."""
-        rel_x = x - 290
-        rel_y = y - 410
+        rel_x = (base_x + 15) - 290
+        rel_y = (base_y + 15) - 410
+        rel_z = z
 
         rad_yaw = math.radians(self.cam_yaw)
-        x1 = rel_x * math.cos(rad_yaw) - rel_y * math.sin(rad_yaw)
-        y1 = rel_x * math.sin(rad_yaw) + rel_y * math.cos(rad_yaw)
-        z1 = z
-
         rad_pitch = math.radians(self.cam_pitch)
-        x2 = x1
-        y2 = y1 * math.cos(rad_pitch) - z1 * math.sin(rad_pitch)
 
-        sx = cx + x2 * self.cam_zoom
-        sy = cy + y2 * self.cam_zoom
-        return int(sx), int(sy)
+        rx = rel_x * math.cos(rad_yaw) - rel_y * math.sin(rad_yaw)
+        ry = rel_x * math.sin(rad_yaw) + rel_y * math.cos(rad_yaw)
+        rz = rel_z
+
+        iso_x = rx
+        iso_y = ry * math.sin(rad_pitch) - rz * math.cos(rad_pitch)
+
+        sx = cx + iso_x * self.cam_zoom
+        sy = cy + iso_y * self.cam_zoom
+        return (int(sx), int(sy))
+
+    def project_3d_point(self, x, y, z):
+        """Projects generic 3D points to Column 1 space."""
+        cx = COL1_WIDTH // 2 + self.cam_pan_x
+        cy = COL_HEIGHT // 2 + self.cam_pan_y
+
+        if not self.is_3d_mode:
+            center_x, center_y = 290, 410
+            sx = cx + (x - center_x) * self.cam_zoom
+            sy = cy + (y - center_y) * self.cam_zoom
+            return (int(sx), int(sy))
+
+        rel_x = x - 290
+        rel_y = y - 410
+        rel_z = z
+
+        rad_yaw = math.radians(self.cam_yaw)
+        rad_pitch = math.radians(self.cam_pitch)
+
+        rx = rel_x * math.cos(rad_yaw) - rel_y * math.sin(rad_yaw)
+        ry = rel_x * math.sin(rad_yaw) + rel_y * math.cos(rad_yaw)
+        rz = rel_z
+
+        iso_x = rx
+        iso_y = ry * math.sin(rad_pitch) - rz * math.cos(rad_pitch)
+
+        sx = cx + iso_x * self.cam_zoom
+        sy = cy + iso_y * self.cam_zoom
+        return (int(sx), int(sy))
 
     def get_column2_graph_pos(self, node_id):
-        """Tính tọa độ 2D thông thoáng ở Cột 2 (Đồ thị Toán học)."""
-        base_x, base_y = self.base_coords[node_id]
-        scale_x = (COL2_WIDTH - 90) / 440.0
-        scale_y = (COL_HEIGHT - 150) / 640.0
-        gx = int((base_x - 60) * scale_x + 45)
-        gy = int((base_y - 100) * scale_y + 75)
-        return gx, gy
+        """Computes balanced mathematical graph layout in Column 2."""
+        bx, by = self.base_coords[node_id]
+        scale_x = (COL2_WIDTH - 120) / 480.0
+        scale_y = (COL_HEIGHT - 160) / 680.0
+        gx = 60 + int((bx - 40) * scale_x)
+        gy = 90 + int((by - 80) * scale_y)
+        return (gx, gy)
 
-    def get_arc_points(self, p1, p2, edge_tuple, num_segments=10):
-        """Tạo chuỗi điểm theo đường cong Bézier bậc 2 (Quadratic Bézier) chống đè nét."""
-        offset = self.curvatures.get(edge_tuple, 0)
-        if offset == 0:
-            return [p1, p2], ((p1[0] + p2[0]) // 2, (p1[1] + p2[1]) // 2)
-
+    def get_arc_points(self, p1, p2, edge_tuple, num_segments=16):
+        """Generates quadratic Bézier curve points to avoid overlapping edges."""
+        curvature = self.curvatures.get(edge_tuple, 0)
         x1, y1 = p1
         x2, y2 = p2
+
+        mx = (x1 + x2) / 2.0
+        my = (y1 + y2) / 2.0
+
+        if curvature == 0:
+            return [p1, p2], (int(mx), int(my))
+
         dx = x2 - x1
         dy = y2 - y1
-        dist = math.hypot(dx, dy)
-        if dist == 0:
-            return [p1, p2], p1
+        length = math.hypot(dx, dy)
+        if length == 0:
+            return [p1, p2], (int(mx), int(my))
 
-        nx = -dy / dist
-        ny = dx / dist
-        cx = (x1 + x2) / 2.0 + nx * offset
-        cy = (y1 + y2) / 2.0 + ny * offset
+        nx = -dy / length
+        ny = dx / length
+
+        ctrl_x = mx + nx * curvature * 1.5
+        ctrl_y = my + ny * curvature * 1.5
 
         pts = []
         for i in range(num_segments + 1):
             t = i / float(num_segments)
-            bx = (1.0 - t)**2 * x1 + 2.0 * (1.0 - t) * t * cx + t**2 * x2
-            by = (1.0 - t)**2 * y1 + 2.0 * (1.0 - t) * t * cy + t**2 * y2
-            pts.append((int(bx), int(by)))
+            inv = 1.0 - t
+            bx = inv * inv * x1 + 2 * inv * t * ctrl_x + t * t * x2
+            by = inv * inv * y1 + 2 * inv * t * ctrl_y + t * t * y2
+            pts.append((int(bx), int(by)) if i not in (0, num_segments) else (int(bx), int(by)))
 
-        mid_pt = pts[num_segments // 2]
-        return pts, mid_pt
+        mid_x = 0.25 * x1 + 0.5 * ctrl_x + 0.25 * x2
+        mid_y = 0.25 * y1 + 0.5 * ctrl_y + 0.25 * y2
+        return pts, (int(mid_x), int(mid_y))
 
     def get_interpolated_arc_pos(self, p1, p2, edge_tuple, t):
-        """Tính vị trí robot mượt mà dọc theo đường cong Bézier tại thời điểm t in [0.0, 1.0]."""
-        offset = self.curvatures.get(edge_tuple, 0)
-        if offset == 0:
-            return int((1.0 - t) * p1[0] + t * p2[0]), int((1.0 - t) * p1[1] + t * p2[1])
-
+        """Interpolates position along the Bézier curve for smooth pulse animation."""
+        curvature = self.curvatures.get(edge_tuple, 0)
         x1, y1 = p1
         x2, y2 = p2
+        if curvature == 0:
+            return (int(x1 + (x2 - x1) * t), int(y1 + (y2 - y1) * t))
+
         dx = x2 - x1
         dy = y2 - y1
-        dist = math.hypot(dx, dy)
-        if dist == 0:
-            return p1
+        length = math.hypot(dx, dy)
+        nx = -dy / length
+        ny = dx / length
 
-        nx = -dy / dist
-        ny = dx / dist
-        cx = (x1 + x2) / 2.0 + nx * offset
-        cy = (y1 + y2) / 2.0 + ny * offset
+        mx = (x1 + x2) / 2.0
+        my = (y1 + y2) / 2.0
+        ctrl_x = mx + nx * curvature * 1.5
+        ctrl_y = my + ny * curvature * 1.5
 
-        bx = (1.0 - t)**2 * x1 + 2.0 * (1.0 - t) * t * cx + t**2 * x2
-        by = (1.0 - t)**2 * y1 + 2.0 * (1.0 - t) * t * cy + t**2 * y2
-        return int(bx), int(by)
-
-    def draw_3d_quad(self, surf, p1, p2, p3, p4, fill_col, border_col=None):
-        """Vẽ mặt tứ giác 3D với thuật toán Back-face Culling loại bỏ mặt khuất."""
-        pts = [p1, p2, p3, p4]
-        cross = (p2[0] - p1[0]) * (p3[1] - p2[1]) - (p2[1] - p1[1]) * (p3[0] - p2[0])
-        if cross > 0:
-            pygame.draw.polygon(surf, fill_col, pts)
-            if border_col:
-                pygame.draw.polygon(surf, border_col, pts, 1)
-
-    def draw_3d_box(self, surf, x, y, z, w, d, h, col_top, col_side_x, col_side_y, border_col=None):
-        """Vẽ khối hộp 3D nội thất đặc hoàn chỉnh (Đáy, Thân và Nắp) chuẩn Isometric."""
-        cx = COL1_WIDTH // 2 + self.cam_pan_x
-        cy = COL_HEIGHT // 2 + self.cam_pan_y
-
-        b0 = self.get_3d_point(x, y, z, cx, cy)
-        b1 = self.get_3d_point(x + w, y, z, cx, cy)
-        b2 = self.get_3d_point(x + w, y + d, z, cx, cy)
-        b3 = self.get_3d_point(x, y + d, z, cx, cy)
-
-        t0 = self.get_3d_point(x, y, z + h, cx, cy)
-        t1 = self.get_3d_point(x + w, y, z + h, cx, cy)
-        t2 = self.get_3d_point(x + w, y + d, z + h, cx, cy)
-        t3 = self.get_3d_point(x, y + d, z + h, cx, cy)
-
-        sh_s = pygame.Surface((COL1_WIDTH, COL_HEIGHT), pygame.SRCALPHA)
-        pygame.draw.polygon(sh_s, (0, 0, 0, 70), [b0, b1, b2, b3])
-        surf.blit(sh_s, (0, 0))
-
-        self.draw_3d_quad(surf, b0, b1, t1, t0, col_side_y, border_col)
-        self.draw_3d_quad(surf, b1, b2, t2, t1, col_side_x, border_col)
-        self.draw_3d_quad(surf, b2, b3, t3, t2, col_side_y, border_col)
-        self.draw_3d_quad(surf, b3, b0, t0, t3, col_side_x, border_col)
-        self.draw_3d_quad(surf, t0, t1, t2, t3, col_top, border_col)
+        inv = 1.0 - t
+        bx = inv * inv * x1 + 2 * inv * t * ctrl_x + t * t * x2
+        by = inv * inv * y1 + 2 * inv * t * ctrl_y + t * t * y2
+        return (int(bx), int(by))
 
     # =========================================================================
-    # RENDER CỘT 1: SA BÀN CĂN HỘ 3D ISOMETRIC
+    # RENDER COLUMN 1: 3D ISOMETRIC APARTMENT FLOORPLAN
     # =========================================================================
     def draw_column_1_floorplan(self, cur_step):
         surf = pygame.Surface((COL1_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
         mode_str = "3D ISOMETRIC" if self.is_3d_mode else "2D TOP-DOWN"
-        t_col1 = self.font_main.render(f"🏠 CỘT 1: CĂN HỘ ({mode_str})", True, COLOR_TEXT_CYAN)
+        t_col1 = self.font_main.render(f"🏠 COLUMN 1: APARTMENT FLOORPLAN ({mode_str})", True, COLOR_TEXT_CYAN)
         surf.blit(t_col1, (16, 12))
 
         zoom_pct = int(round(self.cam_zoom * 100))
-        surf.blit(self.font_small.render(f"Cuộn chuột / Phím [+/-] Zoom: {zoom_pct}% • Trái: Xoay • Phải: Dời", True, COLOR_TEXT_MUTED), (16, 30))
+        surf.blit(self.font_small.render(f"Scroll / Keys [+/-] Zoom: {zoom_pct}% • Left-Drag: Rotate • Right-Drag: Pan", True, COLOR_TEXT_MUTED), (16, 30))
 
-        # Nút Zoom Out [-]
+        # Zoom Out [-]
         z_out_rx = COL1_WIDTH - 192
         pygame.draw.rect(surf, (30, 41, 59), (z_out_rx, 8, 26, 26), border_radius=4)
         pygame.draw.rect(surf, (71, 85, 105), (z_out_rx, 8, 26, 26), width=1, border_radius=4)
         z_out_t = self.font_main.render("-", True, COLOR_TEXT_WHITE)
         surf.blit(z_out_t, (z_out_rx + 13 - z_out_t.get_width()//2, 8 + 13 - z_out_t.get_height()//2 - 1))
 
-        # Badge Zoom % / Reset
+        # Zoom % Badge
         z_badge_rx = COL1_WIDTH - 162
         pygame.draw.rect(surf, (15, 23, 42), (z_badge_rx, 8, 52, 26), border_radius=4)
         z_border_c = COLOR_TEXT_CYAN if zoom_pct != 115 else (71, 85, 105)
@@ -324,111 +381,92 @@ class SmartRobotSimulationApp:
         z_pct_t = self.font_tag.render(f"{zoom_pct}%", True, COLOR_TEXT_CYAN if zoom_pct != 115 else COLOR_TEXT_MUTED)
         surf.blit(z_pct_t, (z_badge_rx + 26 - z_pct_t.get_width()//2, 8 + 13 - z_pct_t.get_height()//2))
 
-        # Nút Zoom In [+]
+        # Zoom In [+]
         z_in_rx = COL1_WIDTH - 106
         pygame.draw.rect(surf, (30, 41, 59), (z_in_rx, 8, 26, 26), border_radius=4)
         pygame.draw.rect(surf, (71, 85, 105), (z_in_rx, 8, 26, 26), width=1, border_radius=4)
         z_in_t = self.font_main.render("+", True, COLOR_TEXT_WHITE)
         surf.blit(z_in_t, (z_in_rx + 13 - z_in_t.get_width()//2, 8 + 13 - z_in_t.get_height()//2 - 1))
 
-        # Nút Đổi 3D / 2D
-        b3d_rx = COL1_WIDTH - 76
-        b3d_bg = (14, 116, 144) if self.is_3d_mode else (30, 41, 59)
-        pygame.draw.rect(surf, b3d_bg, (b3d_rx, 8, 66, 26), border_radius=4)
-        pygame.draw.rect(surf, COLOR_TEXT_CYAN, (b3d_rx, 8, 66, 26), width=1, border_radius=4)
-        b3d_lbl = "🎮 3D" if self.is_3d_mode else "📐 2D"
-        b3d_t = self.font_tag.render(b3d_lbl, True, (255, 255, 255))
-        surf.blit(b3d_t, (b3d_rx + 33 - b3d_t.get_width()//2, 8 + 13 - b3d_t.get_height()//2))
+        # 3D / 2D Toggle Button
+        v3d_rx = COL1_WIDTH - 76
+        v3d_bg = (14, 165, 233) if self.is_3d_mode else (30, 41, 59)
+        pygame.draw.rect(surf, v3d_bg, (v3d_rx, 8, 66, 26), border_radius=4)
+        pygame.draw.rect(surf, (255, 255, 255) if self.is_3d_mode else (71, 85, 105), (v3d_rx, 8, 66, 26), width=1, border_radius=4)
+        v3d_t = self.font_tag.render("3D VIEW" if self.is_3d_mode else "2D TOP", True, (255, 255, 255))
+        surf.blit(v3d_t, (v3d_rx + 33 - v3d_t.get_width()//2, 8 + 13 - v3d_t.get_height()//2))
 
-        scanned_edge = cur_step.get("scanned_edge") if cur_step else None
-        chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
+        # 1. Draw 5 Room Floor Boundaries
+        for rx, ry, rw, rd, label, fl_col, gr_col in ROOMS_LAYOUT_3D:
+            p_tl = self.project_3d_point(rx, ry, 0)
+            p_tr = self.project_3d_point(rx + rw, ry, 0)
+            p_br = self.project_3d_point(rx + rw, ry + rd, 0)
+            p_bl = self.project_3d_point(rx, ry + rd, 0)
 
-        # 1. Vẽ Mặt sàn kiến trúc 5 phòng
-        cx, cy = COL1_WIDTH // 2 + self.cam_pan_x, COL_HEIGHT // 2 + self.cam_pan_y
-        for rx, ry, rw, rh, rname, rcol, grid_col in ROOMS_LAYOUT_3D:
+            poly_surf = pygame.Surface((COL1_WIDTH, COL_HEIGHT), pygame.SRCALPHA)
+            pygame.draw.polygon(poly_surf, fl_col, [p_tl, p_tr, p_br, p_bl])
+            pygame.draw.polygon(poly_surf, (gr_col[0], gr_col[1], gr_col[2], 180), [p_tl, p_tr, p_br, p_bl], 1)
+            surf.blit(poly_surf, (0, 0))
+
+            p_mid = self.project_3d_point(rx + rw // 2, ry + rd // 2, 0)
+            tag_s = self.font_tag.render(label, True, (gr_col[0] + 50, gr_col[1] + 50, min(255, gr_col[2] + 80)))
+            surf.blit(tag_s, (p_mid[0] - tag_s.get_width() // 2, p_mid[1] - tag_s.get_height() // 2))
+
+        # 2. Draw 3D Architectural Furniture Blocks
+        for fb in FURNITURE_3D_BLOCKS:
+            fx, fy, fz = fb["x"], fb["y"], fb["z"]
+            fw, fd, fh = fb["w"], fb["d"], fb["h"]
+
+            b_tl = self.project_3d_point(fx, fy, fz)
+            b_tr = self.project_3d_point(fx + fw, fy, fz)
+            b_br = self.project_3d_point(fx + fw, fy + fd, fz)
+            b_bl = self.project_3d_point(fx, fy + fd, fz)
+
+            t_tl = self.project_3d_point(fx, fy, fz + fh)
+            t_tr = self.project_3d_point(fx + fw, fy, fz + fh)
+            t_br = self.project_3d_point(fx + fw, fy + fd, fz + fh)
+            t_bl = self.project_3d_point(fx, fy + fd, fz + fh)
+
             if self.is_3d_mode:
-                p0 = self.get_3d_point(rx, ry, 0, cx, cy)
-                p1 = self.get_3d_point(rx + rw, ry, 0, cx, cy)
-                p2 = self.get_3d_point(rx + rw, ry + rh, 0, cx, cy)
-                p3 = self.get_3d_point(rx, ry + rh, 0, cx, cy)
+                pygame.draw.polygon(surf, fb["sx"], [b_bl, b_br, t_br, t_bl])
+                pygame.draw.polygon(surf, fb["sy"], [b_br, b_tr, t_tr, t_br])
 
-                floor_surf = pygame.Surface((COL1_WIDTH, COL_HEIGHT), pygame.SRCALPHA)
-                pygame.draw.polygon(floor_surf, rcol, [p0, p1, p2, p3])
-                pygame.draw.polygon(floor_surf, (51, 65, 85), [p0, p1, p2, p3], 1)
+            pygame.draw.polygon(surf, fb["top"], [t_tl, t_tr, t_br, t_bl])
+            pygame.draw.polygon(surf, (255, 255, 255), [t_tl, t_tr, t_br, t_bl], 1)
 
-                grid_spacing = 45
-                for gx in range(rx + grid_spacing, rx + rw, grid_spacing):
-                    gp0 = self.get_3d_point(gx, ry, 0, cx, cy)
-                    gp1 = self.get_3d_point(gx, ry + rh, 0, cx, cy)
-                    pygame.draw.line(floor_surf, grid_col, gp0, gp1, 1)
-                for gy in range(ry + grid_spacing, ry + rh, grid_spacing):
-                    gp0 = self.get_3d_point(rx, gy, 0, cx, cy)
-                    gp1 = self.get_3d_point(rx + rw, gy, 0, cx, cy)
-                    pygame.draw.line(floor_surf, grid_col, gp0, gp1, 1)
+        # 3. Draw 36 Clean Paths
+        scanned_edge = cur_step.get("scanned_edge", (-1, -1)) if cur_step else (-1, -1)
+        chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
+        rejected_edges = cur_step.get("after_rejected", set()) if cur_step else set()
 
-                surf.blit(floor_surf, (0, 0))
-                surf.blit(self.font_tag.render(rname, True, (148, 163, 184)), (p0[0] - 10, p0[1] - 8))
-            else:
-                center_x, center_y = 290, 410
-                sx = int(cx + (rx - center_x) * self.cam_zoom)
-                sy = int(cy + (ry - center_y) * self.cam_zoom)
-                sw = max(1, int(rw * self.cam_zoom))
-                sh = max(1, int(rh * self.cam_zoom))
-                r_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
-                pygame.draw.rect(r_surf, rcol, (0, 0, sw, sh), border_radius=max(1, int(6 * self.cam_zoom)))
-                pygame.draw.rect(r_surf, (51, 65, 85), (0, 0, sw, sh), width=1, border_radius=max(1, int(6 * self.cam_zoom)))
-                surf.blit(r_surf, (sx, sy))
-                surf.blit(self.font_tag.render(rname, True, (148, 163, 184)), (sx + 8, sy + 6))
+        seen_edges = set()
+        pulse = (math.sin(pygame.time.get_ticks() * 0.008) + 1.0) / 2.0
+        glow_w = int(3 + pulse * 4)
 
-        # 2. Vẽ Đồ nội thất 3D đặc né vật cản với Painter's Depth Sorting
-        if self.is_3d_mode:
-            rad_yaw = math.radians(self.cam_yaw)
-            def get_depth(item):
-                cx_item = item["x"] + item["w"] / 2.0 - 290
-                cy_item = item["y"] + item["d"] / 2.0 - 410
-                return cx_item * math.sin(rad_yaw) + cy_item * math.cos(rad_yaw)
-
-            sorted_furniture = sorted(FURNITURE_3D_BLOCKS, key=get_depth)
-            for item in sorted_furniture:
-                self.draw_3d_box(surf, item["x"], item["y"], item["z"], item["w"], item["d"], item["h"], item["top"], item["sx"], item["sy"], (30, 41, 59))
-
-            # Tường 3D kiến trúc
-            for rx, ry, rw, rh, _, _, _ in ROOMS_LAYOUT_3D:
-                p0 = self.get_3d_point(rx, ry, 0, cx, cy)
-                p1 = self.get_3d_point(rx + rw, ry, 0, cx, cy)
-                p2 = self.get_3d_point(rx + rw, ry + rh, 0, cx, cy)
-                p3 = self.get_3d_point(rx, ry + rh, 0, cx, cy)
-
-                p0_t = self.get_3d_point(rx, ry, 26, cx, cy)
-                p1_t = self.get_3d_point(rx + rw, ry, 26, cx, cy)
-                p2_t = self.get_3d_point(rx + rw, ry + rh, 26, cx, cy)
-                p3_t = self.get_3d_point(rx, ry + rh, 26, cx, cy)
-
-                for b, t in [(p0, p0_t), (p1, p1_t), (p2, p2_t), (p3, p3_t)]:
-                    pygame.draw.line(surf, (100, 116, 139), b, t, 2)
-                pygame.draw.polygon(surf, (71, 85, 105, 120), [p0_t, p1_t, p2_t, p3_t], 2)
-
-        # 3. Vẽ Cung đường cong Bézier né vật cản
-        seen = set()
         for u, v, l_m, cap in self.edges:
             edge_tuple = tuple(sorted((u, v)))
-            if edge_tuple in seen:
+            if edge_tuple in seen_edges:
                 continue
-            seen.add(edge_tuple)
+            seen_edges.add(edge_tuple)
 
-            p1 = self.get_column1_pos(u, z=4)
-            p2 = self.get_column1_pos(v, z=4)
-            pts, mid_pt = self.get_arc_points(p1, p2, edge_tuple)
+            p1 = self.get_column1_pos(u, z=0)
+            p2 = self.get_column1_pos(v, z=0)
 
-            if edge_tuple == scanned_edge:
-                pygame.draw.lines(surf, COLOR_TEXT_GOLD, False, pts, 5)
-            elif edge_tuple in chosen_edges:
+            is_scan = (edge_tuple == scanned_edge)
+            is_pick = (edge_tuple in chosen_edges)
+            is_rej = (edge_tuple in rejected_edges)
+
+            if is_scan:
+                pygame.draw.line(surf, COLOR_TEXT_GOLD, p1, p2, glow_w)
+            elif is_pick:
                 col = COLOR_TEXT_GREEN if self.active_mode != "DIJKSTRA" else COLOR_TEXT_CYAN
-                pygame.draw.lines(surf, col, False, pts, 4)
+                pygame.draw.line(surf, col, p1, p2, 4)
+            elif is_rej:
+                pygame.draw.line(surf, (239, 68, 68, 120), p1, p2, 1)
             else:
-                pygame.draw.lines(surf, (56, 189, 248, 160) if self.is_3d_mode else (51, 65, 85), False, pts, 2)
+                pygame.draw.line(surf, (51, 65, 85, 140), p1, p2, 1)
 
-        # 4. Vẽ 25 Đỉnh quét bụi
+        # 4. Draw 25 Cleaning Waypoints
         for i, d in self.nodes_data.items():
             p_node = self.get_column1_pos(i, z=8)
             p_ground = self.get_column1_pos(i, z=0)
@@ -452,30 +490,22 @@ class SmartRobotSimulationApp:
             id_txt = self.font_tag.render(str(i), True, (255, 255, 255))
             surf.blit(id_txt, (p_node[0] - id_txt.get_width() // 2, p_node[1] - id_txt.get_height() // 2))
 
-        # 5. Vẽ Robot Roomba 3D phát quang di chuyển đồng bộ
+        # 5. Draw Glowing 3D Roomba Robot with Lidar Scanner
         if cur_step:
             u = cur_step.get("current_u", 0)
             v = cur_step.get("current_v", 0)
             u_p = self.get_column1_pos(u, z=0)
             v_p = self.get_column1_pos(v, z=0)
 
-            edge_tuple = tuple(sorted((u, v)))
-            rx, ry = self.get_interpolated_arc_pos(u_p, v_p, edge_tuple, self.anim_t)
+            rx = int(u_p[0] + (v_p[0] - u_p[0]) * self.anim_t)
+            ry = int(u_p[1] + (v_p[1] - u_p[1]) * self.anim_t)
 
-            scale = max(0.7, min(2.5, self.cam_zoom))
+            scale = max(0.5, min(2.0, self.cam_zoom))
             bot_base = (rx, ry)
-            bot_top = (rx, int(ry - 14 * scale))
-            bot_lidar = (rx, int(ry - 20 * scale))
+            bot_top = (rx, ry - int(10 * scale)) if self.is_3d_mode else (rx, ry)
+            bot_lidar = (rx, ry - int(14 * scale)) if self.is_3d_mode else (rx, ry)
 
-            bw = int(16 * scale)
-            bh = int(8 * scale)
-
-            sh_s = pygame.Surface((COL1_WIDTH, COL_HEIGHT), pygame.SRCALPHA)
-            pygame.draw.ellipse(sh_s, (0, 0, 0, 110), (bot_base[0] - bw - 2, bot_base[1] - bh - 1, (bw + 2) * 2, (bh + 1) * 2))
-            pygame.draw.ellipse(sh_s, (56, 189, 248, 60), (bot_base[0] - bw - 8, bot_base[1] - bh - 5, (bw + 8) * 2, (bh + 5) * 2))
-            surf.blit(sh_s, (0, 0))
-
-            pygame.draw.ellipse(surf, (30, 41, 59), (bot_base[0] - bw, bot_base[1] - bh, bw * 2, bh * 2))
+            pygame.draw.ellipse(surf, (15, 23, 42), (bot_base[0] - int(16 * scale), bot_base[1] - int(8 * scale), int(32 * scale), int(16 * scale)))
             pygame.draw.line(surf, (148, 163, 184), (bot_base[0] - int(14 * scale), bot_base[1]), (bot_top[0] - int(14 * scale), bot_top[1]), max(1, int(2 * scale)))
             pygame.draw.line(surf, (148, 163, 184), (bot_base[0] + int(14 * scale), bot_base[1]), (bot_top[0] + int(14 * scale), bot_top[1]), max(1, int(2 * scale)))
             pygame.draw.ellipse(surf, (241, 245, 249), (bot_top[0] - int(14 * scale), bot_top[1] - int(7 * scale), int(28 * scale), int(14 * scale)))
@@ -493,30 +523,30 @@ class SmartRobotSimulationApp:
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL1_X, COL_Y, COL1_WIDTH, COL_HEIGHT), 2)
 
     # =========================================================================
-    # RENDER CỘT 2: ĐỒ THỊ TOÁN HỌC G = (V, E)
+    # RENDER COLUMN 2: MATHEMATICAL GRAPH G = (V, E)
     # =========================================================================
     def draw_column_2_graph(self, cur_step):
         surf = pygame.Surface((COL2_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
-        t_col2 = self.font_main.render("📐 CỘT 2: ĐỒ THỊ TOÁN HỌC G = (V, E)", True, COLOR_TEXT_GOLD)
+        t_col2 = self.font_main.render("📐 COLUMN 2: MATHEMATICAL GRAPH G = (V, E)", True, COLOR_TEXT_GOLD)
         surf.blit(t_col2, (16, 12))
 
-        surf.blit(self.font_small.render("Cung cong Bézier tách biệt 100%: Dễ nhìn, không đè lên nhau", True, COLOR_TEXT_MUTED), (16, 30))
+        surf.blit(self.font_small.render("100% Non-overlapping Bézier Curved Edges • Clear Topology", True, COLOR_TEXT_MUTED), (16, 30))
 
         graph_bg = pygame.Rect(12, 48, COL2_WIDTH - 24, COL_HEIGHT - 62)
         pygame.draw.rect(surf, (15, 23, 42), graph_bg, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), graph_bg, width=1, border_radius=6)
 
-        scanned_edge = cur_step.get("scanned_edge") if cur_step else None
+        scanned_edge = cur_step.get("scanned_edge", (-1, -1)) if cur_step else (-1, -1)
         chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
         rejected_edges = cur_step.get("after_rejected", set()) if cur_step else set()
 
-        self.pulse_val = (self.pulse_val + 0.12) % (math.pi * 2)
-        glow_w = int(5 + 2 * math.sin(self.pulse_val))
-
-        # 1. Vẽ 36 cung Bézier không đè nét
         seen = set()
+        pulse = (math.sin(pygame.time.get_ticks() * 0.008) + 1.0) / 2.0
+        glow_w = int(3 + pulse * 4)
+
+        # 1. Draw 36 Bézier Curved Edges
         for u, v, l_m, cap in self.edges:
             edge_tuple = tuple(sorted((u, v)))
             if edge_tuple in seen:
@@ -551,7 +581,7 @@ class SmartRobotSimulationApp:
             pygame.draw.rect(surf, tag_col if (is_scan or is_pick) else (51, 65, 85), t_rect, width=1, border_radius=3)
             surf.blit(tag_surf, (mx - tag_surf.get_width()//2, my - tag_surf.get_height()//2))
 
-        # 2. Quả cầu năng lượng di chuyển đồng bộ
+        # 2. Moving Energy Pulse
         if cur_step:
             u = cur_step.get("current_u", 0)
             v = cur_step.get("current_v", 0)
@@ -565,7 +595,7 @@ class SmartRobotSimulationApp:
             pygame.draw.circle(surf, COLOR_TEXT_CYAN, (ox, oy), 8)
             pygame.draw.circle(surf, (255, 255, 255), (ox, oy), 4)
 
-        # 3. Vẽ 25 Đỉnh toán học
+        # 3. Draw 25 Mathematical Nodes
         for i, d in self.nodes_data.items():
             gx, gy = self.get_column2_graph_pos(i)
             is_cur = (cur_step and (i == cur_step.get("current_u") or i == cur_step.get("current_v")))
@@ -591,27 +621,27 @@ class SmartRobotSimulationApp:
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL2_X, COL_Y, COL2_WIDTH, COL_HEIGHT), 2)
 
     # =========================================================================
-    # RENDER CỘT 3: BỘ SOI MÃ GIẢ & BIẾN TOÁN HỌC LIVE
+    # RENDER COLUMN 3: LIVE PSEUDOCODE & MATHEMATICAL VARIABLES INSPECTOR
     # =========================================================================
     def draw_column_3_inspector(self, cur_step):
         surf = pygame.Surface((COL3_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
-        t_col3 = self.font_main.render("🔍 CỘT 3: BỘ SOI MÃ GIẢ & BIẾN TOÁN HỌC", True, (244, 114, 182))
+        t_col3 = self.font_main.render("🔍 COLUMN 3: PSEUDOCODE & LIVE MATH INSPECTOR", True, (244, 114, 182))
         surf.blit(t_col3, (16, 12))
 
-        step_txt = f"Bước: {self.current_step_idx + 1}/{len(self.steps)}" if self.steps else "Sẵn sàng"
-        surf.blit(self.font_small.render(f"Đang chạy: {self.active_mode} ALGORITHM | {step_txt}", True, COLOR_TEXT_MUTED), (16, 30))
+        step_txt = f"Step: {self.current_step_idx + 1}/{len(self.steps)}" if self.steps else "Ready"
+        surf.blit(self.font_small.render(f"Active Mode: {self.active_mode} ALGORITHM | {step_txt}", True, COLOR_TEXT_MUTED), (16, 30))
 
         py = 50
 
-        # 1. BẢNG MÃ GIẢ PSEUDOCODE (210px)
+        # 1. PSEUDOCODE BOX (210px)
         h1 = 210
         box1 = pygame.Rect(14, py, COL3_WIDTH - 28, h1)
         pygame.draw.rect(surf, (15, 23, 42), box1, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), box1, width=1, border_radius=6)
 
-        surf.blit(self.font_tag.render("MÃ GIẢ THUẬT TOÁN ĐANG THỰC THI (PSEUDOCODE):", True, COLOR_TEXT_CYAN), (22, py + 8))
+        surf.blit(self.font_tag.render("ACTIVE ALGORITHM PSEUDOCODE:", True, COLOR_TEXT_CYAN), (22, py + 8))
 
         if cur_step and "pseudocode" in cur_step:
             active_line = cur_step.get("pseudocode_line", 1)
@@ -628,7 +658,7 @@ class SmartRobotSimulationApp:
 
         py += h1 + 10
 
-        # 2. HỘP GIẢI THÍCH CHI TIẾT TỪNG BƯỚC (245px)
+        # 2. STEP REASONING & ROBOT ACTION BOX (245px)
         h2 = 245
         box2 = pygame.Rect(14, py, COL3_WIDTH - 28, h2)
         pygame.draw.rect(surf, (15, 23, 42), box2, border_radius=6)
@@ -637,28 +667,28 @@ class SmartRobotSimulationApp:
         if cur_step:
             u = cur_step.get("current_u", 0)
             v = cur_step.get("current_v", 0)
-            u_name = self.nodes_data.get(u, {}).get("name", f"Đỉnh {u}")
-            v_name = self.nodes_data.get(v, {}).get("name", f"Đỉnh {v}")
+            u_name = self.nodes_data.get(u, {}).get("name", f"Node {u}")
+            v_name = self.nodes_data.get(v, {}).get("name", f"Node {v}")
             w = cur_step.get("scanned_weight", 0.0)
 
-            surf.blit(self.font_main.render(f"BƯỚC {self.current_step_idx + 1}/{len(self.steps)}: ĐÁNH GIÁ CẠNH ({u} ↔ {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
-            surf.blit(self.font_body.render(f"• Quét lối đi: [{u}] {u_name} ➔ [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 28))
+            surf.blit(self.font_main.render(f"STEP {self.current_step_idx + 1}/{len(self.steps)}: EVALUATING EDGE ({u} ↔ {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
+            surf.blit(self.font_body.render(f"• Scanning path: [{u}] {u_name} ➔ [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 28))
 
-            surf.blit(self.font_main.render("• Điều kiện toán học:", True, (244, 114, 182)), (22, py + 48))
+            surf.blit(self.font_main.render("• Mathematical Condition:", True, (244, 114, 182)), (22, py + 48))
             surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (26, py + 66))
 
-            surf.blit(self.font_main.render("• Hành động:", True, COLOR_TEXT_GREEN), (22, py + 90))
+            surf.blit(self.font_main.render("• Action:", True, COLOR_TEXT_GREEN), (22, py + 90))
             surf.blit(self.font_main.render(cur_step.get("result_text", ""), True, cur_step.get("status_color", COLOR_TEXT_CYAN)), (26, py + 108))
 
         py += h2 + 10
 
-        # 3. BẢNG TRẠNG THÁI BIẾN TOÁN HỌC LIVE (435px)
+        # 3. LIVE VARIABLES BOX (435px)
         h3 = 435
         box3 = pygame.Rect(14, py, COL3_WIDTH - 28, h3)
         pygame.draw.rect(surf, (15, 23, 42), box3, border_radius=6)
         pygame.draw.rect(surf, (31, 41, 55), box3, width=1, border_radius=6)
 
-        surf.blit(self.font_tag.render("BẢNG TRẠNG THÁI BIẾN TOÁN HỌC (LIVE VARIABLES):", True, COLOR_TEXT_CYAN), (22, py + 8))
+        surf.blit(self.font_tag.render("LIVE MATHEMATICAL VARIABLES STATE:", True, COLOR_TEXT_CYAN), (22, py + 8))
 
         if cur_step and "math_state" in cur_step:
             var_y = py + 26
@@ -670,37 +700,37 @@ class SmartRobotSimulationApp:
             chosen_list = list(cur_step["after_chosen"])
             c_y = var_y + 8
             chosen_str = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[:10]])
-            surf.blit(self.font_small.render(f"Tập cạnh đã chọn ({len(chosen_list)}): {chosen_str}", True, (226, 232, 240)), (22, c_y))
+            surf.blit(self.font_small.render(f"Selected Edges ({len(chosen_list)}): {chosen_str}", True, (226, 232, 240)), (22, c_y))
             if len(chosen_list) > 10:
                 chosen_str2 = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[10:20]])
                 surf.blit(self.font_small.render(f"                         {chosen_str2}", True, (226, 232, 240)), (22, c_y + 16))
 
-        # 4. NÚT ĐIỀU KHIỂN BƯỚC
-        mouse_pos = pygame.mouse.get_pos()
+        # 4. STEP CONTROLLER BUTTONS
         btn_y = COL_HEIGHT - 46
 
-        is_h_p = self.btn_prev_rect.collidepoint(mouse_pos)
+        is_h_p = self.is_rect_hit(self.btn_prev_rect, inflate_x=0, inflate_y=0)
         pygame.draw.rect(surf, (51, 65, 85) if is_h_p else (30, 41, 59), (12, btn_y, 90, 36), border_radius=5)
         pygame.draw.rect(surf, COLOR_TEXT_CYAN, (12, btn_y, 90, 36), width=1, border_radius=5)
-        surf.blit(self.font_body.render("◀ LÙI [B]", True, (255, 255, 255)), (24, btn_y + 10))
+        surf.blit(self.font_body.render("◀ PREV [B]", True, (255, 255, 255)), (18, btn_y + 10))
 
-        is_h_n = self.btn_next_rect.collidepoint(mouse_pos)
+        is_h_n = self.is_rect_hit(self.btn_next_rect, inflate_x=0, inflate_y=0)
         pygame.draw.rect(surf, (14, 116, 144) if is_h_n else (8, 145, 178), (108, btn_y, 110, 36), border_radius=5)
         pygame.draw.rect(surf, (255, 255, 255) if is_h_n else COLOR_TEXT_CYAN, (108, btn_y, 110, 36), width=1, border_radius=5)
-        surf.blit(self.font_main.render("TIẾP [S] ▶", True, (255, 255, 255)), (122, btn_y + 9))
+        surf.blit(self.font_main.render("NEXT [S] ▶", True, (255, 255, 255)), (120, btn_y + 9))
 
         auto_bg = (5, 150, 105) if self.is_auto_playing else (51, 65, 85)
         pygame.draw.rect(surf, auto_bg, (224, btn_y, 140, 36), border_radius=5)
         pygame.draw.rect(surf, COLOR_TEXT_GREEN if self.is_auto_playing else (148, 163, 184), (224, btn_y, 140, 36), width=1, border_radius=5)
-        auto_lbl = "⏸️ DỪNG [SPACE]" if self.is_auto_playing else "▶️ TỰ ĐỘNG"
-        surf.blit(self.font_body.render(auto_lbl, True, (255, 255, 255)), (236, btn_y + 10))
+        auto_lbl = "⏸️ PAUSE [SPACE]" if self.is_auto_playing else "▶️ AUTO PLAY"
+        surf.blit(self.font_body.render(auto_lbl, True, (255, 255, 255)), (232, btn_y + 10))
 
-        pygame.draw.rect(surf, (51, 65, 85), (370, btn_y, 80, 36), border_radius=5)
+        is_h_r = self.is_rect_hit(self.btn_reset_rect, inflate_x=0, inflate_y=0)
+        pygame.draw.rect(surf, (71, 85, 105) if is_h_r else (51, 65, 85), (370, btn_y, 80, 36), border_radius=5)
         pygame.draw.rect(surf, (148, 163, 184), (370, btn_y, 80, 36), width=1, border_radius=5)
-        surf.blit(self.font_body.render("🔄 ĐẶT LẠI", True, (255, 255, 255)), (378, btn_y + 10))
+        surf.blit(self.font_body.render("🔄 RESET [R]", True, (255, 255, 255)), (374, btn_y + 10))
 
         fs_w = max(40, COL3_WIDTH - 12 - 456)
-        is_h_fs = self.btn_fullscreen_rect.collidepoint(mouse_pos)
+        is_h_fs = self.is_rect_hit(self.btn_fullscreen_rect, inflate_x=0, inflate_y=0)
         pygame.draw.rect(surf, (14, 165, 233) if is_h_fs else (3, 105, 161), (456, btn_y, fs_w, 36), border_radius=5)
         surf.blit(self.font_tag.render("⛶ F11", True, (255, 255, 255)), (464, btn_y + 10))
 
@@ -708,11 +738,10 @@ class SmartRobotSimulationApp:
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL3_X, COL_Y, COL3_WIDTH, COL_HEIGHT), 2)
 
     def draw_top_bar(self):
-        """Vẽ thanh Menu 7 Thuật Toán trên cùng."""
-        mouse_pos = pygame.mouse.get_pos()
+        """Renders the top algorithm navigation bar."""
         for rect, label, mode_id, color in self.top_buttons:
             is_act = (self.active_mode == mode_id)
-            is_hov = rect.collidepoint(mouse_pos)
+            is_hov = self.is_rect_hit(rect, inflate_x=0, inflate_y=0)
 
             bg_c = (color[0]//2, color[1]//2, color[2]//2) if is_act else ((51, 65, 85) if is_hov else (17, 24, 39))
             border_c = color if is_act else ((148, 163, 184) if is_hov else (31, 41, 55))
@@ -725,7 +754,7 @@ class SmartRobotSimulationApp:
             self.screen.blit(btn_t, (rect.centerx - btn_t.get_width()//2, rect.centery - btn_t.get_height()//2))
 
     def switch_mode(self, mode_id):
-        """Chuyển đổi tức thì sang thuật toán mới."""
+        """Switches dynamically to a different graph algorithm."""
         self.active_mode = mode_id
         self.is_auto_playing = False
         self.auto_timer = 0
@@ -743,25 +772,25 @@ class SmartRobotSimulationApp:
         elif mode_id == "BIPARTITE":
             self.steps = self.algo_engine.build_bipartite_steps()
         else:
-            self.steps = self.algo_engine.build_maxflow_steps()
+            self.steps = self.algo_engine.build_maxflow_steps(source=0, sink=22)
 
         self.current_step_idx = 0
-        self.anim_t = 0.0
+        self.anim_t = 1.0
 
     def step_next(self):
-        """Tiến 1 bước thuật toán."""
+        """Advances one algorithm step."""
         if self.current_step_idx < len(self.steps) - 1:
             self.current_step_idx += 1
             self.anim_t = 0.0
 
     def step_prev(self):
-        """Lùi 1 bước thuật toán."""
+        """Reverses one algorithm step."""
         if self.current_step_idx > 0:
             self.current_step_idx -= 1
             self.anim_t = 0.0
 
     def toggle_fullscreen(self):
-        """Bật / Tắt chế độ toàn màn hình an toàn không bị méo độ phân giải."""
+        """Toggles fullscreen cleanly while preserving aspect ratio."""
         self.is_fullscreen = not self.is_fullscreen
         if self.is_fullscreen:
             self.screen = pygame.display.set_mode(
@@ -773,11 +802,13 @@ class SmartRobotSimulationApp:
             )
 
     def run(self):
-        """Vòng lặp chính xử lý sự kiện và vẽ khung hình."""
+        """Main game loop handling events, simulation state, and rendering."""
         running = True
         while running:
             self.clock.tick(FPS)
-            mx, my = pygame.mouse.get_pos()
+            raw_mx, raw_my = pygame.mouse.get_pos()
+            can_mx, can_my = self.to_canvas_pos((raw_mx, raw_my))
+
             self.lidar_angle = (self.lidar_angle + 5.0) % 360.0
 
             if self.anim_t < 1.0:
@@ -798,51 +829,61 @@ class SmartRobotSimulationApp:
                     running = False
 
                 elif event.type == pygame.MOUSEWHEEL:
-                    if mx <= COL1_X + COL1_WIDTH:
+                    can_x, can_y = self.to_canvas_pos((raw_mx, raw_my))
+                    if can_x <= COL1_X + COL1_WIDTH:
                         self.cam_zoom = max(0.4, min(3.0, self.cam_zoom + event.y * 0.08))
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
-                        # Kiểm tra click Top Buttons
+                        # 1. Check Top Algorithm Navigation Buttons (with robust multi-coord hit testing)
+                        top_clicked = False
                         for rect, _, mode_id, _ in self.top_buttons:
-                            if rect.collidepoint(mx, my):
+                            if self.is_rect_hit(rect, event=event, inflate_x=4, inflate_y=10):
                                 self.switch_mode(mode_id)
+                                top_clicked = True
                                 break
 
-                        # Kiểm tra nút Zoom / 3D ở Cột 1
-                        if self.btn_zoom_out_rect.collidepoint(mx, my):
+                        if top_clicked:
+                            continue
+
+                        # 2. Check Column 1 Zoom / 3D Mode Buttons
+                        if self.is_rect_hit(self.btn_zoom_out_rect, event=event):
                             self.cam_zoom = max(0.4, self.cam_zoom - 0.15)
-                        elif self.btn_zoom_in_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_zoom_in_rect, event=event):
                             self.cam_zoom = min(3.0, self.cam_zoom + 0.15)
-                        elif self.btn_zoom_badge_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_zoom_badge_rect, event=event):
                             self.cam_zoom = 1.15
                             self.cam_pan_x = 0
                             self.cam_pan_y = 0
-                        elif self.btn_view_3d_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_view_3d_rect, event=event):
                             self.is_3d_mode = not self.is_3d_mode
 
-                        # Kiểm tra nút điều khiển ở Cột 3
-                        elif self.btn_prev_rect.collidepoint(mx, my):
+                        # 3. Check Column 3 Step Controller Buttons
+                        elif self.is_rect_hit(self.btn_prev_rect, event=event):
                             self.step_prev()
-                        elif self.btn_next_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_next_rect, event=event):
                             self.step_next()
-                        elif self.btn_auto_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_auto_rect, event=event):
                             self.is_auto_playing = not self.is_auto_playing
-                        elif self.btn_reset_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_reset_rect, event=event):
                             self.current_step_idx = 0
                             self.is_auto_playing = False
                             self.anim_t = 0.0
-                        elif self.btn_fullscreen_rect.collidepoint(mx, my):
+                        elif self.is_rect_hit(self.btn_fullscreen_rect, event=event):
                             self.toggle_fullscreen()
 
-                        elif mx < COL1_X + COL1_WIDTH and my > COL_Y:
-                            self.is_dragging_3d = True
-                            self.last_mouse_pos = (mx, my)
+                        # 4. Canvas Dragging for 3D Camera Rotation
+                        else:
+                            click_x, click_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
+                            if click_x < COL1_X + COL1_WIDTH and click_y > COL_Y:
+                                self.is_dragging_3d = True
+                                self.last_mouse_pos = (click_x, click_y)
 
                     elif event.button == 3:
-                        if mx < COL1_X + COL1_WIDTH and my > COL_Y:
+                        click_x, click_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
+                        if click_x < COL1_X + COL1_WIDTH and click_y > COL_Y:
                             self.is_panning_3d = True
-                            self.last_mouse_pos = (mx, my)
+                            self.last_mouse_pos = (click_x, click_y)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -851,18 +892,19 @@ class SmartRobotSimulationApp:
                         self.is_panning_3d = False
 
                 elif event.type == pygame.MOUSEMOTION:
+                    cur_x, cur_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
                     if self.is_dragging_3d and self.is_3d_mode:
-                        dx = mx - self.last_mouse_pos[0]
-                        dy = my - self.last_mouse_pos[1]
+                        dx = cur_x - self.last_mouse_pos[0]
+                        dy = cur_y - self.last_mouse_pos[1]
                         self.cam_yaw = (self.cam_yaw + dx * 0.5) % 360.0
                         self.cam_pitch = max(10.0, min(85.0, self.cam_pitch - dy * 0.5))
-                        self.last_mouse_pos = (mx, my)
+                        self.last_mouse_pos = (cur_x, cur_y)
                     elif self.is_panning_3d:
-                        dx = mx - self.last_mouse_pos[0]
-                        dy = my - self.last_mouse_pos[1]
+                        dx = cur_x - self.last_mouse_pos[0]
+                        dy = cur_y - self.last_mouse_pos[1]
                         self.cam_pan_x += dx
                         self.cam_pan_y += dy
-                        self.last_mouse_pos = (mx, my)
+                        self.last_mouse_pos = (cur_x, cur_y)
 
                 elif event.type == pygame.KEYDOWN:
                     if event.key in [pygame.K_RIGHT, pygame.K_s]:
@@ -902,7 +944,7 @@ class SmartRobotSimulationApp:
                     elif event.key in [pygame.K_7, pygame.K_KP7]:
                         self.switch_mode("MAXFLOW")
 
-            # Vẽ nền và 3 cột giao diện
+            # Render background and the 3 distinct dashboard columns
             self.screen.fill(COLOR_APP_BG)
             self.draw_top_bar()
 

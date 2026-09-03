@@ -4,24 +4,18 @@ Cài đặt thuật toán kiểm tra tính Euler, thuật toán Fleury (7.1)
 và thuật toán Hierholzer (7.2) tìm Chu trình / Đường đi Euler.
 """
 from collections import deque
+from core.traversal import bfs
 
 
 def check_eulerian(adj, n, directed=False):
     """
     Kiểm tra điều kiện tồn tại Chu trình Euler hoặc Đường đi Euler.
-
-    Tham số:
-        adj: danh sách kề dạng {u: [(v, w), ...], ...}
-        n: số đỉnh
-        directed: True nếu là đồ thị có hướng, False nếu vô hướng
-
-    Trả về:
-        (has_euler, is_circuit, start_node, message)
     """
     if directed:
         # 1. Đồ thị có hướng
         in_deg = [0] * n
         out_deg = [0] * n
+        # tính bán bậc vào bật ra
         for u in range(n):
             for v, _ in adj.get(u, []):
                 out_deg[u] += 1
@@ -78,26 +72,18 @@ def check_eulerian(adj, n, directed=False):
 
     else:
         # 2. Đồ thị vô hướng
-        deg = [len(adj.get(u, [])) for u in range(n)]
+        deg = [len(adj.get(u, [])) for u in range(n)]  # lấy ra bậc của các đỉnh
 
-        start_bfs = next((u for u in range(n) if deg[u] > 0), None)
+        start_bfs = next((u for u in range(n) if deg[u] > 0), None)  # lấy đỉnh ra nếu bậc lớn 0
         if start_bfs is None:
             return True, True, 0, "Đồ thị rỗng (không có cạnh)."
 
-        # Kiểm tra tính liên thông
-        visited = [False] * n
-        queue = deque([start_bfs])
-        visited[start_bfs] = True
-
-        while queue:
-            u = queue.popleft()
-            for v, _ in adj.get(u, []):
-                if not visited[v]:
-                    visited[v] = True
-                    queue.append(v)
+        # Kiểm tra tính liên thông (tái sử dụng bfs tối ưu, không ghi bảng vết)
+        reachable_nodes, _, _ = bfs(adj, n, start_bfs, record_trace=False)
+        visited_set = set(reachable_nodes)
 
         for u in range(n):
-            if deg[u] > 0 and not visited[u]:
+            if deg[u] > 0 and u not in visited_set:
                 return False, False, None, "Đồ thị không liên thông giữa các đỉnh có cạnh."
 
         odd_vertices = [u for u in range(n) if deg[u] % 2 != 0]
@@ -121,39 +107,19 @@ def is_bridge(u, v, adj_copy, n):
     if len(adj_copy.get(u, [])) <= 1:
         return False
 
-    # Đếm số đỉnh tới được từ u TRƯỚC KHI xóa cạnh (u, v)
-    visited = [False] * n
-    queue = deque([u])
-    visited[u] = True
-    count_before = 1
+    # 1. Đếm số đỉnh tới được từ u TRƯỚC KHI xóa cạnh (u, v) (tái sử dụng bfs)
+    order_before, _, _ = bfs(adj_copy, n, u, record_trace=False)
+    count_before = len(order_before)
 
-    while queue:
-        curr = queue.popleft()
-        for neighbor, _ in adj_copy.get(curr, []):
-            if not visited[neighbor]:
-                visited[neighbor] = True
-                count_before += 1
-                queue.append(neighbor)
-
-    # Tạm thời xóa cạnh (u, v)
+    # 2. Tạm thời xóa cạnh (u, v)
     adj_copy[u] = [(k, w) for (k, w) in adj_copy[u] if k != v]
     adj_copy[v] = [(k, w) for (k, w) in adj_copy[v] if k != u]
 
-    # Đếm số đỉnh tới được từ u SAU KHI xóa cạnh (u, v)
-    visited_after = [False] * n
-    queue_after = deque([u])
-    visited_after[u] = True
-    count_after = 1
+    # 3. Đếm số đỉnh tới được từ u SAU KHI xóa cạnh (u, v) (tái sử dụng bfs)
+    order_after, _, _ = bfs(adj_copy, n, u, record_trace=False)
+    count_after = len(order_after)
 
-    while queue_after:
-        curr = queue_after.popleft()
-        for neighbor, _ in adj_copy.get(curr, []):
-            if not visited_after[neighbor]:
-                visited_after[neighbor] = True
-                count_after += 1
-                queue_after.append(neighbor)
-
-    # Khôi phục lại cạnh (u, v)
+    # 4. Khôi phục lại cạnh (u, v)
     adj_copy[u].append((v, 1))
     adj_copy[v].append((u, 1))
 
