@@ -1,8 +1,10 @@
-"""
-Module: core/max_flow.py
-Thuật toán Ford-Fulkerson (Edmonds-Karp) tìm Luồng cực đại (Max Flow)
-và Lát cắt hẹp nhất (Min Cut) trên mạng luồng có sức chứa.
-"""
+# =============================================================================
+# THUẬT TOÁN LUỒNG CỰC ĐẠI & LÁT CẮT HẸP NHẤT (MAX FLOW / MIN CUT)
+# =============================================================================
+# Chứa thuật toán Ford-Fulkerson (dùng BFS - Edmonds-Karp) tìm luồng cực đại.
+# Ứng dụng: Tính toán băng thông hút bụi tối đa của mạng lưới ống dẫn (g/min).
+# Phát hiện điểm nghẽn (bottleneck) thông qua định lý Min Cut.
+
 from collections import deque
 
 

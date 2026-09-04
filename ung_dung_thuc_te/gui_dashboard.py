@@ -337,12 +337,20 @@ class SmartRobotSimulationApp:
     # =========================================================================
     # RENDER COLUMN 1: 3D ISOMETRIC APARTMENT FLOORPLAN
     # =========================================================================
+    # =========================================================================
+    # COLUMN 1: 3D FLOORPLAN & ROBOT SIMULATION (GIAO DIỆN MÔ PHỎNG VẬT LÝ)
+    # =========================================================================
+    # Đây là giao diện chính hiển thị căn hộ dưới dạng 3D Isometric.
+    # Nhiệm vụ:
+    # 1. Vẽ sơ đồ phòng (Phòng khách, bếp, ngủ...)
+    # 2. Vẽ nội thất (Sofa, giường, tủ...)
+    # 3. Vẽ vị trí thực tế của Robot và các hiệu ứng Laser Lidar
     def draw_column_1_floorplan(self, cur_step):
         surf = pygame.Surface((COL1_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
-        mode_str = "3D ISOMETRIC" if self.is_3d_mode else "2D TOP-DOWN"
-        t_col1 = self.font_title.render(f"COL 1: APARTMENT FLOORPLAN ({mode_str})", True, COLOR_TEXT_CYAN)
+        mode_tag = "3D VIEW" if self.is_3d_mode else "2D TOP"
+        t_col1 = self.font_title.render(f"COL 1: FLOORPLAN ({mode_tag})", True, COLOR_TEXT_CYAN)
         surf.blit(t_col1, (16, 10))
 
         zoom_pct = int(round(self.cam_zoom * 100))
@@ -420,10 +428,19 @@ class SmartRobotSimulationApp:
         scanned_edge = cur_step.get("scanned_edge", (-1, -1)) if cur_step else (-1, -1)
         chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
         rejected_edges = cur_step.get("after_rejected", set()) if cur_step else set()
+        shortest_path_edges = cur_step.get("shortest_path_edges", set()) if cur_step else set()
+        is_path_found = cur_step.get("is_path_found", False) if cur_step else False
 
         seen_edges = set()
-        pulse = (math.sin(pygame.time.get_ticks() * 0.008) + 1.0) / 2.0
+        t_ticks = pygame.time.get_ticks()
+        pulse = (math.sin(t_ticks * 0.008) + 1.0) / 2.0
         glow_w = int(3 + pulse * 4)
+
+        # High-visibility pulsing oscillation for Dijkstra shortest path (~1.5 Hz)
+        blink = (math.sin(t_ticks * 0.012) + 1.0) / 2.0  # 0.0 to 1.0
+        sp_pulse_w = int(5 + blink * 5)
+        neon_g = int(180 + blink * 75)
+        sp_neon_col = (16, neon_g, 220) if blink > 0.4 else (52, 255, 160)
 
         for u, v, l_m, cap in self.edges:
             edge_tuple = tuple(sorted((u, v)))
@@ -434,11 +451,18 @@ class SmartRobotSimulationApp:
             p1 = self.get_column1_pos(u, z=0)
             p2 = self.get_column1_pos(v, z=0)
 
+            is_sp = (is_path_found and self.active_mode == "DIJKSTRA" and edge_tuple in shortest_path_edges)
             is_scan = (edge_tuple == scanned_edge)
             is_pick = (edge_tuple in chosen_edges)
             is_rej = (edge_tuple in rejected_edges)
 
-            if is_scan:
+            if is_sp:
+                # Flashing/pulsing multi-layer neon laser line
+                aura_c = (5, 150, 105) if blink < 0.5 else (6, 182, 212)
+                pygame.draw.line(surf, aura_c, p1, p2, sp_pulse_w + 6)
+                pygame.draw.line(surf, sp_neon_col, p1, p2, sp_pulse_w)
+                pygame.draw.line(surf, (255, 255, 255), p1, p2, max(2, sp_pulse_w - 4))
+            elif is_scan:
                 pygame.draw.line(surf, COLOR_TEXT_GOLD, p1, p2, glow_w)
             elif is_pick:
                 col = COLOR_TEXT_GREEN if self.active_mode != "DIJKSTRA" else COLOR_TEXT_CYAN
@@ -449,6 +473,7 @@ class SmartRobotSimulationApp:
                 pygame.draw.line(surf, (51, 65, 85, 140), p1, p2, 1)
 
         # 4. Draw 25 Cleaning Waypoints
+        sp_nodes = cur_step.get("shortest_path_nodes", []) if (cur_step and is_path_found and self.active_mode == "DIJKSTRA") else []
         for i, d in self.nodes_data.items():
             p_node = self.get_column1_pos(i, z=8)
             p_ground = self.get_column1_pos(i, z=0)
@@ -456,11 +481,18 @@ class SmartRobotSimulationApp:
             ntype = d["room"]
             is_dock = (ntype == "DOCK" and i == 0)
             is_cur = (cur_step and (i == cur_step.get("current_u") or i == cur_step.get("current_v")))
+            is_sp_node = (i in sp_nodes)
 
             color = (236, 72, 153) if is_dock else ((59, 130, 246) if d["zone"] == "DRY" else (245, 158, 11))
             
             if self.is_3d_mode:
                 pygame.draw.line(surf, (148, 163, 184, 160), p_ground, p_node, 1)
+
+            # Pulsing beacon ring for nodes along the shortest path
+            if is_sp_node:
+                beacon_r = int(14 + blink * 7)
+                pygame.draw.circle(surf, (52, 255, 160), p_node, beacon_r, 2)
+                pygame.draw.circle(surf, (16, 185, 129, 80), p_node, beacon_r + 4, 1)
 
             if is_cur:
                 pygame.draw.circle(surf, COLOR_TEXT_GOLD, p_node, 18, 2)
@@ -472,12 +504,32 @@ class SmartRobotSimulationApp:
             id_txt = self.font_tag.render(str(i), True, (255, 255, 255))
             surf.blit(id_txt, (p_node[0] - id_txt.get_width() // 2, p_node[1] - id_txt.get_height() // 2))
 
-        # 5. Draw Glowing 3D Roomba Robot with Lidar Scanner
+        # 5. Draw Glowing 3D Roomba Robot with Lidar Scanner (Zero-Teleportation Physical Logic)
         if cur_step:
-            u = cur_step.get("current_u", 0)
-            v = cur_step.get("current_v", 0)
-            u_p = self.get_column1_pos(u, z=0)
-            v_p = self.get_column1_pos(v, z=0)
+            mode = self.active_mode
+            if mode == "DIJKSTRA":
+                phase = cur_step.get("phase", "")
+                if phase in ("SCAN", "LOCKED"):
+                    # Robot is stationary at starting corner [22] running Dijkstra in memory
+                    bot_u, bot_v = 22, 22
+                elif phase == "DOCKED":
+                    # Robot is safely docked at Charging Base [0]
+                    bot_u, bot_v = 0, 0
+                else:  # "TRAVELING" -> Physically rolls along the shortest path
+                    bot_u = cur_step.get("current_u", 0)
+                    bot_v = cur_step.get("current_v", 0)
+
+            elif mode in ("MST", "MAXFLOW"):
+                # Kruskal (infrastructure cabling) and Max Flow (pipe evacuation):
+                # Robot is resting at Dock Base [0], monitoring network flow
+                bot_u, bot_v = 0, 0
+
+            else:  # BFS, DFS, EULER, BIPARTITE -> 100% continuous physical travel
+                bot_u = cur_step.get("current_u", 0)
+                bot_v = cur_step.get("current_v", 0)
+
+            u_p = self.get_column1_pos(bot_u, z=0)
+            v_p = self.get_column1_pos(bot_v, z=0)
 
             rx = int(u_p[0] + (v_p[0] - u_p[0]) * self.anim_t)
             ry = int(u_p[1] + (v_p[1] - u_p[1]) * self.anim_t)
@@ -493,13 +545,118 @@ class SmartRobotSimulationApp:
             pygame.draw.ellipse(surf, (241, 245, 249), (bot_top[0] - int(14 * scale), bot_top[1] - int(7 * scale), int(28 * scale), int(14 * scale)))
             pygame.draw.ellipse(surf, (56, 189, 248), (bot_top[0] - int(10 * scale), bot_top[1] - int(5 * scale), int(20 * scale), int(10 * scale)), 1)
 
-            pygame.draw.circle(surf, (239, 68, 68), bot_lidar, max(2, int(4 * scale)))
+            # =================================================================
+            # 6. HIGH-TECH SCI-FI LIDAR SCANNER & VOLUMETRIC LASER BEAM
+            # =================================================================
+            laser_overlay = pygame.Surface((COL1_WIDTH, COL_HEIGHT), pygame.SRCALPHA)
+            t_ticks = pygame.time.get_ticks()
+            pulse_wave = (math.sin(t_ticks * 0.018) + 1.0) / 2.0
 
-            for b in range(6):
-                rad = math.radians(self.lidar_angle + b * 60)
-                bx = rx + int(30 * scale * math.cos(rad))
-                by = ry + int(15 * scale * math.sin(rad))
-                pygame.draw.line(surf, (56, 189, 248, 160), bot_lidar, (bx, by), 1)
+            # 6.1 Cyber Radar Range Rings around Roomba Base
+            for r_ring in [int(18 * scale), int(34 * scale)]:
+                pygame.draw.ellipse(laser_overlay, (56, 189, 248, 38), 
+                                    (rx - r_ring, ry - r_ring // 2, r_ring * 2, r_ring), 1)
+
+            # 6.2 Sweeping 360° Phosphor Radar Fan
+            sweep_rad = math.radians(self.lidar_angle)
+            fan_len = int(32 * scale)
+            for trail_i in range(12):
+                trail_rad = sweep_rad - math.radians(trail_i * 3.6)
+                alpha_trail = max(0, 160 - trail_i * 13)
+                tx = rx + int(fan_len * math.cos(trail_rad))
+                ty = ry + int((fan_len * 0.5) * math.sin(trail_rad))
+                pygame.draw.line(laser_overlay, (56, 189, 248, alpha_trail), bot_lidar, (tx, ty), max(1, int(1.5 * scale)))
+
+            # 6.3 Pulsing Ruby / Cyan Laser Diode Lens on Lidar Dome
+            core_pulse = (math.sin(t_ticks * 0.015) + 1.0) / 2.0
+            core_r = max(2, int((3.5 + core_pulse * 1.5) * scale))
+            pygame.draw.circle(laser_overlay, (239, 68, 68, 160), bot_lidar, core_r + 3)
+            pygame.draw.circle(surf, (255, 90, 90), bot_lidar, core_r)
+            pygame.draw.circle(surf, (255, 255, 255), bot_lidar, max(1, core_r - 2))
+
+            # 6.4 VOLUMETRIC TACTICAL LASER BEAM (When surveying/scanning waypoints)
+            inspect_t = cur_step.get("inspect_target")
+            if inspect_t is not None and inspect_t != bot_u:
+                target_node = inspect_t
+            elif mode == "DIJKSTRA" and cur_step.get("phase") == "SCAN":
+                target_node = cur_step.get("current_v", cur_step.get("current_u"))
+            elif bot_u == bot_v and cur_step.get("scanned_edge", (-1, -1)) != (-1, -1):
+                se = cur_step.get("scanned_edge", (-1, -1))
+                target_node = se[1] if se[0] == bot_u else (se[0] if se[1] == bot_u else None)
+            else:
+                target_node = None
+
+            if target_node is not None and target_node != bot_u:
+                tp_node = self.get_column1_pos(target_node, z=8)
+
+                lx1, ly1 = bot_lidar
+                lx2, ly2 = tp_node
+                dist_l = math.hypot(lx2 - lx1, ly2 - ly1)
+
+                if dist_l > 8:
+                    # Adaptive Laser Color Matrix based on active algorithm
+                    if mode == "DIJKSTRA":
+                        beam_c = (56, 189, 248)       # Electric Cyan
+                        halo_rgba = (14, 165, 233, 65)
+                    elif mode == "DFS":
+                        beam_c = (168, 85, 247)      # Neon Violet
+                        halo_rgba = (147, 51, 234, 65)
+                    elif cur_step.get("action") == "ODD CYCLE CONFLICT":
+                        beam_c = (239, 68, 68)       # Alert Red
+                        halo_rgba = (220, 38, 38, 80)
+                    else:
+                        beam_c = (250, 204, 21)      # High-Power Gold
+                        halo_rgba = (234, 179, 8, 65)
+
+                    # Layer 1: Wide Atmospheric Glow Halo
+                    glow_thick = int(9 + pulse_wave * 6)
+                    pygame.draw.line(laser_overlay, halo_rgba, (lx1, ly1), (lx2, ly2), glow_thick)
+
+                    # Layer 2: Main High-Energy Laser Beam
+                    main_thick = max(2, int(3.5 + pulse_wave * 2))
+                    pygame.draw.line(laser_overlay, (*beam_c, 230), (lx1, ly1), (lx2, ly2), main_thick)
+
+                    # Layer 3: Ultra-Intense White Laser Plasma Core
+                    core_thick = max(1, int(1.5 * scale))
+                    pygame.draw.line(laser_overlay, (255, 255, 255, 245), (lx1, ly1), (lx2, ly2), core_thick)
+
+                    # Layer 4: Dual Paraxial Telemetry Tracer Lines
+                    nx = -(ly2 - ly1) / dist_l * 3.5
+                    ny = (lx2 - lx1) / dist_l * 3.5
+                    pygame.draw.line(laser_overlay, (*beam_c, 80), (lx1 + nx, ly1 + ny), (lx2, ly2), 1)
+                    pygame.draw.line(laser_overlay, (*beam_c, 80), (lx1 - nx, ly1 - ny), (lx2, ly2), 1)
+
+                    # Layer 5: Dynamic High-Speed Photon Energy Packets (Streaming Particles)
+                    for p_i in range(3):
+                        p_t = (t_ticks * 0.0035 + p_i * 0.33) % 1.0
+                        px = int(lx1 + (lx2 - lx1) * p_t)
+                        py = int(ly1 + (ly2 - ly1) * p_t)
+                        pygame.draw.circle(laser_overlay, (255, 255, 255, 240), (px, py), int(2.5 + pulse_wave * 1.5))
+                        pygame.draw.circle(laser_overlay, (*beam_c, 160), (px, py), int(5 + pulse_wave * 2.5))
+
+                    # Layer 6: Tactical HUD Target Lock Reticle at Destination
+                    # Expanding radar shockwave ring
+                    ripple_r = int(8 + ((t_ticks * 0.045) % 18))
+                    ripple_alpha = max(0, int(210 * (1.0 - ripple_r / 26.0)))
+                    pygame.draw.circle(laser_overlay, (*beam_c, ripple_alpha), (lx2, ly2), ripple_r, 2)
+
+                    # Rotating Sci-Fi HUD Crosshair Brackets
+                    ret_r = int(14 + pulse_wave * 4)
+                    pygame.draw.circle(laser_overlay, (*beam_c, 210), (lx2, ly2), ret_r, 1)
+                    for angle_deg in [0, 90, 180, 270]:
+                        c_rad = math.radians(angle_deg + (t_ticks * 0.09) % 360)
+                        cx1 = lx2 + int((ret_r - 3) * math.cos(c_rad))
+                        cy1 = ly2 + int((ret_r - 3) * math.sin(c_rad))
+                        cx2 = lx2 + int((ret_r + 5) * math.cos(c_rad))
+                        cy2 = ly2 + int((ret_r + 5) * math.sin(c_rad))
+                        pygame.draw.line(laser_overlay, (255, 255, 255, 230), (cx1, cy1), (cx2, cy2), 2)
+
+                    # Super-bright Laser Impact Spark
+                    pygame.draw.circle(laser_overlay, (255, 255, 255, 255), (lx2, ly2), 4)
+                    pygame.draw.circle(laser_overlay, (*beam_c, 190), (lx2, ly2), 8)
+
+            # Composite Laser Overlay onto Column 1 Surface
+            surf.blit(laser_overlay, (0, 0))
 
         self.screen.blit(surf, (COL1_X, COL_Y))
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL1_X, COL_Y, COL1_WIDTH, COL_HEIGHT), 2)
@@ -507,6 +664,12 @@ class SmartRobotSimulationApp:
     # =========================================================================
     # RENDER COLUMN 2: MATHEMATICAL GRAPH G = (V, E)
     # =========================================================================
+    # =========================================================================
+    # COLUMN 2: MATHEMATICAL GRAPH G = (V, E) (ĐỒ THỊ TOÁN HỌC)
+    # =========================================================================
+    # Giao diện này hiển thị cấu trúc đồ thị trừu tượng song song với sơ đồ vật lý.
+    # Đỉnh = Các điểm mốc trong nhà.
+    # Cạnh = Hành lang di chuyển an toàn giữa các mốc.
     def draw_column_2_graph(self, cur_step):
         surf = pygame.Surface((COL2_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
@@ -523,10 +686,18 @@ class SmartRobotSimulationApp:
         scanned_edge = cur_step.get("scanned_edge", (-1, -1)) if cur_step else (-1, -1)
         chosen_edges = cur_step.get("after_chosen", set()) if cur_step else set()
         rejected_edges = cur_step.get("after_rejected", set()) if cur_step else set()
+        shortest_path_edges = cur_step.get("shortest_path_edges", set()) if cur_step else set()
+        is_path_found = cur_step.get("is_path_found", False) if cur_step else False
 
         seen = set()
-        pulse = (math.sin(pygame.time.get_ticks() * 0.008) + 1.0) / 2.0
+        t_ticks = pygame.time.get_ticks()
+        pulse = (math.sin(t_ticks * 0.008) + 1.0) / 2.0
         glow_w = int(3 + pulse * 4)
+
+        blink = (math.sin(t_ticks * 0.012) + 1.0) / 2.0
+        sp_pulse_w = int(5 + blink * 5)
+        neon_g = int(180 + blink * 75)
+        sp_neon_col = (16, neon_g, 220) if blink > 0.4 else (52, 255, 160)
 
         # 1. Draw 36 Bézier Curved Edges
         for u, v, l_m, cap in self.edges:
@@ -539,11 +710,17 @@ class SmartRobotSimulationApp:
             p2 = self.get_column2_graph_pos(v)
             pts, mid_pt = self.get_arc_points(p1, p2, edge_tuple)
 
+            is_sp = (is_path_found and self.active_mode == "DIJKSTRA" and edge_tuple in shortest_path_edges)
             is_scan = (edge_tuple == scanned_edge)
             is_pick = (edge_tuple in chosen_edges)
             is_rej = (edge_tuple in rejected_edges)
 
-            if is_scan:
+            if is_sp:
+                aura_c = (5, 150, 105) if blink < 0.5 else (6, 182, 212)
+                pygame.draw.lines(surf, aura_c, False, pts, sp_pulse_w + 6)
+                pygame.draw.lines(surf, sp_neon_col, False, pts, sp_pulse_w)
+                pygame.draw.lines(surf, (255, 255, 255), False, pts, max(2, sp_pulse_w - 4))
+            elif is_scan:
                 pygame.draw.lines(surf, COLOR_TEXT_GOLD, False, pts, glow_w)
             elif is_pick:
                 col = COLOR_TEXT_GREEN if self.active_mode != "DIJKSTRA" else COLOR_TEXT_CYAN
@@ -554,14 +731,21 @@ class SmartRobotSimulationApp:
                 pygame.draw.lines(surf, (51, 65, 85), False, pts, 2)
 
             mx, my = mid_pt
-            tag_col = COLOR_TEXT_GOLD if is_scan else (COLOR_TEXT_GREEN if is_pick else (COLOR_TEXT_RED if is_rej else (148, 163, 184)))
-            bg_col = (55, 48, 163) if is_scan else ((6, 78, 59) if is_pick else ((127, 29, 29) if is_rej else (15, 23, 42)))
-            
-            tag_surf = self.font_tag.render(f"{l_m:.1f}m", True, tag_col)
-            t_rect = pygame.Rect(mx - tag_surf.get_width()//2 - 2, my - tag_surf.get_height()//2 - 1, tag_surf.get_width() + 4, tag_surf.get_height() + 2)
-            pygame.draw.rect(surf, bg_col, t_rect, border_radius=3)
-            pygame.draw.rect(surf, tag_col if (is_scan or is_pick) else (51, 65, 85), t_rect, width=1, border_radius=3)
-            surf.blit(tag_surf, (mx - tag_surf.get_width()//2, my - tag_surf.get_height()//2))
+            if is_sp:
+                tag_surf = self.font_tag.render(f"★ {l_m:.1f}m", True, (255, 255, 255))
+                t_rect = pygame.Rect(mx - tag_surf.get_width()//2 - 3, my - tag_surf.get_height()//2 - 2, tag_surf.get_width() + 6, tag_surf.get_height() + 4)
+                pygame.draw.rect(surf, (5, 150, 105), t_rect, border_radius=4)
+                pygame.draw.rect(surf, (52, 255, 160), t_rect, width=2, border_radius=4)
+                surf.blit(tag_surf, (mx - tag_surf.get_width()//2, my - tag_surf.get_height()//2))
+            else:
+                tag_col = COLOR_TEXT_GOLD if is_scan else (COLOR_TEXT_GREEN if is_pick else (COLOR_TEXT_RED if is_rej else (148, 163, 184)))
+                bg_col = (55, 48, 163) if is_scan else ((6, 78, 59) if is_pick else ((127, 29, 29) if is_rej else (15, 23, 42)))
+                
+                tag_surf = self.font_tag.render(f"{l_m:.1f}m", True, tag_col)
+                t_rect = pygame.Rect(mx - tag_surf.get_width()//2 - 2, my - tag_surf.get_height()//2 - 1, tag_surf.get_width() + 4, tag_surf.get_height() + 2)
+                pygame.draw.rect(surf, bg_col, t_rect, border_radius=3)
+                pygame.draw.rect(surf, tag_col if (is_scan or is_pick) else (51, 65, 85), t_rect, width=1, border_radius=3)
+                surf.blit(tag_surf, (mx - tag_surf.get_width()//2, my - tag_surf.get_height()//2))
 
         # 2. Moving Energy Pulse
         if cur_step:
@@ -578,13 +762,19 @@ class SmartRobotSimulationApp:
             pygame.draw.circle(surf, (255, 255, 255), (ox, oy), 4)
 
         # 3. Draw 25 Mathematical Nodes
+        sp_nodes = cur_step.get("shortest_path_nodes", []) if (cur_step and is_path_found and self.active_mode == "DIJKSTRA") else []
         for i, d in self.nodes_data.items():
             gx, gy = self.get_column2_graph_pos(i)
             is_cur = (cur_step and (i == cur_step.get("current_u") or i == cur_step.get("current_v")))
             is_dock = (i == 0)
+            is_sp_node = (i in sp_nodes)
 
             color = (236, 72, 153) if is_dock else ((59, 130, 246) if d["zone"] == "DRY" else (245, 158, 11))
             r = 14 if is_dock else 12
+
+            if is_sp_node:
+                pygame.draw.circle(surf, (52, 255, 160), (gx, gy), int(16 + blink * 8), 2)
+                pygame.draw.circle(surf, (16, 185, 129, 90), (gx, gy), int(22 + blink * 8), 1)
 
             if is_cur:
                 pygame.draw.circle(surf, COLOR_TEXT_GOLD, (gx, gy), 22, 2)
@@ -605,6 +795,13 @@ class SmartRobotSimulationApp:
     # =========================================================================
     # RENDER COLUMN 3: LIVE PSEUDOCODE & MATHEMATICAL VARIABLES INSPECTOR
     # =========================================================================
+    # =========================================================================
+    # COLUMN 3: ALGORITHM INSPECTOR (BẢNG ĐIỀU KHIỂN & TRẠNG THÁI TOÁN HỌC)
+    # =========================================================================
+    # Bảng này hiển thị từng bước chạy (Step-by-step) của thuật toán:
+    # 1. Mã giả (Pseudocode) đang chạy tới dòng nào.
+    # 2. Trạng thái các biến toán học (Queue, Stack, Array...)
+    # 3. Log hành động của Robot.
     def draw_column_3_inspector(self, cur_step):
         surf = pygame.Surface((COL3_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
@@ -653,8 +850,18 @@ class SmartRobotSimulationApp:
             v_name = self.nodes_data.get(v, {}).get("name", f"Node {v}")
             w = cur_step.get("scanned_weight", 0.0)
 
-            surf.blit(self.font_main.render(f"STEP {self.current_step_idx + 1}/{len(self.steps)}: EVALUATING EDGE ({u} <-> {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
-            surf.blit(self.font_body.render(f"> Scanning path: [{u}] {u_name} -> [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 30))
+            title = cur_step.get("step_title", f"EVALUATING EDGE ({u} <-> {v})")
+            surf.blit(self.font_main.render(f"STEP {self.current_step_idx + 1}/{len(self.steps)}: {title}", True, COLOR_TEXT_GOLD), (22, py + 8))
+
+            phase = cur_step.get("phase", "")
+            if phase == "LOCKED":
+                surf.blit(self.font_body.render(f"> Path locked: [22] Plants -> ... -> [0] Charging Dock (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 30))
+            elif phase == "TRAVELING":
+                surf.blit(self.font_body.render(f"> Autonomous motion: [{u}] {u_name} -> [{v}] {v_name} (Segment: {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 30))
+            elif phase == "DOCKED":
+                surf.blit(self.font_body.render("> Robot coupling: Secured at [0] Charging Dock Base", True, COLOR_TEXT_WHITE), (22, py + 30))
+            else:
+                surf.blit(self.font_body.render(f"> Scanning path: [{u}] {u_name} -> [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 30))
 
             surf.blit(self.font_main.render("> Mathematical Condition:", True, (244, 114, 182)), (22, py + 52))
             surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (26, py + 72))

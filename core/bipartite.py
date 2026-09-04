@@ -1,38 +1,53 @@
-def check_bipartite(adj, n): # ta quy định 1 là đỏ -1 là xanh 0 là chưa tô 
-    color = [0] * n  # tạo mảng quản lí duyệt 
-    parent = [-1] * n # lưu đỉnh vết cha 
+# =============================================================================
+# THUẬT TOÁN ĐỒ THỊ HAI PHÍA (BIPARTITE GRAPH)
+# =============================================================================
+# Kiểm tra xem đồ thị có phải Bipartite (2-colorable) hay không.
+# Ứng dụng: Lập trình phân 2 vùng độc lập (Khô/Ướt) để tránh robot kéo giẻ lau ướt lên sàn gỗ.
 
-    # duyệt các đỉnh nếu có đỉnh chưa tô màu thì tô màu đỏ thêm queue
+def check_bipartite(adj, n):
+    """
+    Sử dụng BFS để tô màu đỉnh (Coloring).
+    Quy định: 1 (Màu đỏ / Khô), -1 (Màu xanh / Ướt), 0 (Chưa tô).
+    Trả về True nếu chia được 2 tập độc lập (không mâu thuẫn).
+    Nếu False, trả về cả 'chu trình lẻ' (odd cycle) gây ra mâu thuẫn.
+    """
+    color = [0] * n        # Mảng quản lý trạng thái tô màu
+    parent = [-1] * n      # Lưu vết để trích xuất chu trình lẻ khi có lỗi
+
+    # Vòng lặp bên ngoài đảm bảo quét cả các thành phần liên thông rời rạc
     for start in range(n):
         if color[start] != 0:
             continue
 
-        color[start] = 1
+        color[start] = 1   # Chọn màu khởi đầu là 1
         queue = [start]
-    # nếu queue đang có phần tử thì chạy 
+        
         while len(queue) > 0:
-            u = queue.pop(0) # lấy cái vừa được đẩy vào ra
+            u = queue.pop(0)
 
-            for v, *w in adj.get(u, []):  # lấy ds cạnh kề với u ra
-                if color[v] == 0: # nếu chưa cso màu thì 
-                    color[v] = -color[u]  # đổi màu v cha đỏ con xanh cha xanh con đỏ
+            # Duyệt các đỉnh v kề với đỉnh u
+            for v, *w in adj.get(u, []):
+                if color[v] == 0: 
+                    # Nếu chưa tô màu -> Tô màu ĐỐI NGHỊCH với cha nó (1 -> -1 hoặc -1 -> 1)
+                    color[v] = -color[u]
                     parent[v] = u 
                     queue.append(v)
                 elif color[v] == color[u]:
-                    # Phát hiện mâu thuẫn màu -> Trích xuất chu trình lẻ
+                    # PHÁT HIỆN LỖI (Mâu thuẫn màu) -> Đồ thị không phải 2 phía
+                    # Trích xuất chu trình lẻ bằng thuật toán tìm Tổ tiên chung gần nhất (LCA)
                     path_u = []
                     curr = u
                     while curr != -1:
                         path_u.append(curr)
                         curr = parent[curr]
 
-                    path_v = [] # lưu đỉnh từ u về đỉnh gốc
-                    curr = v # tạo con trỏ v 
+                    path_v = []
+                    curr = v
                     while curr != -1:
                         path_v.append(curr)
                         curr = parent[curr]
 
-                    # Tìm tổ tiên chung gần nhất (LCA)
+                    # Tìm tổ tiên chung gần nhất (Lowest Common Ancestor - LCA)
                     lca = -1
                     set_v = set(path_v)
                     for node in path_u:
@@ -40,7 +55,7 @@ def check_bipartite(adj, n): # ta quy định 1 là đỏ -1 là xanh 0 là chư
                             lca = node
                             break
 
-                    # Xây dựng chu trình lẻ
+                    # Xây dựng chu trình lẻ hoàn chỉnh
                     cycle_u = []
                     for node in path_u:
                         cycle_u.append(node)
@@ -61,6 +76,7 @@ def check_bipartite(adj, n): # ta quy định 1 là đỏ -1 là xanh 0 là chư
                         "colors": None
                     }
 
+    # Nếu chạy hết mà không có mâu thuẫn -> Hợp lệ!
     v1 = [i for i in range(n) if color[i] == 1]
     v2 = [i for i in range(n) if color[i] == -1]
 

@@ -1,3 +1,9 @@
+# =============================================================================
+# THUẬT TOÁN ĐỒ THỊ EULER (EULERIAN PATH & CIRCUIT)
+# =============================================================================
+# Chứa thuật toán kiểm tra tính Euler, thuật toán Fleury và Hierholzer.
+# Ứng dụng: Lập lịch dọn dẹp kỹ (Full Coverage) - Quét 100% các hành lang đúng 1 lần.
+
 """
 Module: core/euler.py
 Cài đặt thuật toán kiểm tra tính Euler, thuật toán Fleury (7.1)
