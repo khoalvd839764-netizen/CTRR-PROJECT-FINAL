@@ -100,8 +100,8 @@ class RobotAlgorithms:
                 },
                 "action": "SELECT EDGE FOR MST" if is_chosen else "REJECT (CYCLE DETECTED)",
                 "status_color": (52, 211, 153) if is_chosen else (239, 68, 68),
-                "reason": f"DSU: find({u}) != find({v}) ({root_u} != {root_v}) ➔ NO CYCLE." if is_chosen else f"DSU: find({u}) == find({v}) ({root_u}) ➔ CLOSES CYCLE!",
-                "result_text": f"➔ SELECTED ({u} ↔ {v}) (w = {w:.1f}m)! MST: {len(chosen)+1}/{self.n - 1} edges." if is_chosen else f"➔ SKIPPED ({u} ↔ {v}): Alternate path exists.",
+                "reason": f"DSU: find({u}) != find({v}) ({root_u} != {root_v}) -> NO CYCLE." if is_chosen else f"DSU: find({u}) == find({v}) ({root_u}) -> CLOSES CYCLE!",
+                "result_text": f"-> SELECTED ({u} <-> {v}) (w = {w:.1f}m)! MST: {len(chosen)+1}/{self.n - 1} edges." if is_chosen else f"-> SKIPPED ({u} <-> {v}): Alternate path exists.",
                 "after_chosen": set(chosen),
                 "after_rejected": set(rejected),
                 "after_weight": accum_w
@@ -169,7 +169,7 @@ class RobotAlgorithms:
                     dist[v] = dist[u] + w
                     parent[v] = u
 
-                d_str = "∞" if old_d == float('inf') else f"{old_d:.1f}m"
+                d_str = "INF" if old_d == float('inf') else f"{old_d:.1f}m"
                 step_data = {
                     "step_num": step_count,
                     "scanned_edge": edge_tuple,
@@ -194,7 +194,7 @@ class RobotAlgorithms:
                     "action": "UPDATE SHORTER PATH" if is_relaxed else "KEEP EXISTING (SUBOPTIMAL)",
                     "status_color": (56, 189, 248) if is_relaxed else (148, 163, 184),
                     "reason": f"d[{u}] + w = {dist[u]:.1f} + {w:.1f} = {dist[u]+w:.1f}m < d[{v}] ({d_str})" if is_relaxed else f"Path via [{v}] ({d_str}) is already shorter or equal.",
-                    "result_text": f"➔ OPTIMIZED: d[{v}] = {dist[v]:.1f}m (via [{u}])" if is_relaxed else f"➔ IGNORED ({u} ➔ {v}).",
+                    "result_text": f"-> OPTIMIZED: d[{v}] = {dist[v]:.1f}m (via [{u}])" if is_relaxed else f"-> IGNORED ({u} -> {v}).",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": dist[u]
@@ -256,7 +256,7 @@ class RobotAlgorithms:
                     "action": "DISCOVER NEW EDGE (BFS)" if is_new else "ALREADY VISITED",
                     "status_color": (56, 189, 248) if is_new else (148, 163, 184),
                     "reason": f"Lidar scan from [{u}] discovered UNVISITED door to [{v}]." if is_new else f"Waypoint [{v}] has already been surveyed.",
-                    "result_text": f"➔ ADDED ({u} ↔ {v}) TO BFS SPANNING TREE!" if is_new else f"➔ SKIPPED ({u} ↔ {v}) to prevent loop.",
+                    "result_text": f"-> ADDED ({u} <-> {v}) TO BFS SPANNING TREE!" if is_new else f"-> SKIPPED ({u} <-> {v}) to prevent loop.",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": 0
@@ -301,7 +301,7 @@ class RobotAlgorithms:
                         "2: For each neighbor v of u:",
                         "3:   If not visited[v]: DFS(v) -> ADVANCE DEEP",
                         "4:   Else: Already visited -> Skip",
-                        "5: ➔ Dead end reached: BACKTRACK to parent u"
+                        "5: -> Dead end reached: BACKTRACK to parent u"
                     ],
                     "math_state": {
                         "Current Node u": u,
@@ -312,7 +312,7 @@ class RobotAlgorithms:
                     "action": "ADVANCE DEEPER (DFS TREE)" if is_new else "BACK EDGE (ALREADY VISITED)",
                     "status_color": (168, 85, 247) if is_new else (148, 163, 184),
                     "reason": f"Discovered unvisited corner [{v}] along the perimeter." if is_new else f"Corner [{v}] has already been cleaned.",
-                    "result_text": f"➔ ENTER [{v}]: Expanding deep search branch!" if is_new else f"➔ SKIPPED ({u} ↔ {v}): Already visited node.",
+                    "result_text": f"-> ENTER [{v}]: Expanding deep search branch!" if is_new else f"-> SKIPPED ({u} <-> {v}): Already visited node.",
                     "after_chosen": set(tree_edges),
                     "after_rejected": set(),
                     "after_weight": 0
@@ -337,7 +337,7 @@ class RobotAlgorithms:
                             "2: For each neighbor v of u:",
                             "3:   If not visited[v]: DFS(v)",
                             "4: ...",
-                            "5: ➔ Dead end at v: BACKTRACK to parent u"
+                            "5: -> Dead end at v: BACKTRACK to parent u"
                         ],
                         "math_state": {
                             "Dead End Node": v,
@@ -347,7 +347,7 @@ class RobotAlgorithms:
                         "action": "BACKTRACK TO PARENT",
                         "status_color": (250, 204, 21),
                         "reason": f"Node [{v}] branch fully explored, reversing to [{u}] for next corridor.",
-                        "result_text": f"➔ REVERSE ROBOT from [{v}] to [{u}]!",
+                        "result_text": f"-> REVERSE ROBOT from [{v}] to [{u}]!",
                         "after_chosen": set(tree_edges),
                         "after_rejected": set(),
                         "after_weight": 0
@@ -395,18 +395,18 @@ class RobotAlgorithms:
                     "2: Init Stack = [0], Tour = []",
                     "3: Loop: Traverse (u, v) and REMOVE VISITED EDGE",
                     "4: If vertex has no remaining edges: Push to Tour",
-                    "5: Splice sub-circuits ➔ Complete Euler Circuit"
+                    "5: Splice sub-circuits -> Complete Euler Circuit"
                 ],
                 "math_state": {
                     "Edge Step": f"{idx + 1} / {len(tour_edges)}",
-                    "Traversed Edge": f"({u} ➔ {v})",
+                    "Traversed Edge": f"({u} -> {v})",
                     "Total Euler Distance": f"{total_dist:.1f}m",
                     "Floor Coverage": f"{len(chosen)}/36 edges ({(len(chosen)/36)*100:.0f}%)"
                 },
                 "action": "TRAVERSE EULER EDGE (EXACTLY ONCE)",
                 "status_color": (250, 204, 21),
-                "reason": f"Cleaned segment ({u} ↔ {v}) and removed from graph to avoid repetition.",
-                "result_text": f"➔ COVERED ({u} ➔ {v})! Cleaned {len(chosen)}/36 floor paths.",
+                "reason": f"Cleaned segment ({u} <-> {v}) and removed from graph to avoid repetition.",
+                "result_text": f"-> COVERED ({u} -> {v})! Cleaned {len(chosen)}/36 floor paths.",
                 "after_chosen": set(chosen),
                 "after_rejected": set(),
                 "after_weight": total_dist
@@ -478,8 +478,8 @@ class RobotAlgorithms:
                             },
                             "action": "VALID 2-COLORING" if not is_conflict else "ODD CYCLE CONFLICT",
                             "status_color": (236, 72, 153) if not is_conflict else (239, 68, 68),
-                            "reason": f"Opposite colors: [{u}]={u_zone} ↔ [{v}]={v_zone}." if not is_conflict else f"Conflict! Adjacent nodes [{u}] and [{v}] have same color {u_zone}.",
-                            "result_text": f"➔ VALID: Swap vacuum/mop attachments between zones." if not is_conflict else "➔ Odd cycle detected across rooms!",
+                            "reason": f"Opposite colors: [{u}]={u_zone} <-> [{v}]={v_zone}." if not is_conflict else f"Conflict! Adjacent nodes [{u}] and [{v}] have same color {u_zone}.",
+                            "result_text": f"-> VALID: Swap vacuum/mop attachments between zones." if not is_conflict else "-> Odd cycle detected across rooms!",
                             "after_chosen": set(chosen_edges),
                             "after_rejected": set(),
                             "after_weight": 0
@@ -533,20 +533,20 @@ class RobotAlgorithms:
                     "pseudocode": [
                         "1: [core.max_flow.ford_fulkerson] Init flow f(u, v) = 0",
                         "2: Loop: Find augmenting path from S to T (BFS)",
-                        "3:   Bottleneck Δf = min(residual capacity)",
-                        "4:   Augment flow: f(u, v) += Δf along the path",
-                        "5: ➔ When no path remains: Max Flow = Min Cut"
+                        "3:   Bottleneck Delta_f = min(residual capacity)",
+                        "4:   Augment flow: f(u, v) += Delta_f along the path",
+                        "5: -> When no path remains: Max Flow = Min Cut"
                     ],
                     "math_state": {
-                        "Augmenting Path": " ➔ ".join(map(str, path)),
-                        "Bottleneck Capacity (Δf)": f"{bottleneck} g/min",
+                        "Augmenting Path": " -> ".join(map(str, path)),
+                        "Bottleneck Capacity (Delta_f)": f"{bottleneck} g/min",
                         "Max Flow Throughput": f"{total_max_flow} g/min",
-                        "Pumping Path Segment": f"({u} ➔ {v}) [+{bottleneck}/{cap}]"
+                        "Pumping Path Segment": f"({u} -> {v}) [+{bottleneck}/{cap}]"
                     },
                     "action": "AUGMENT DUST FLOW",
                     "status_color": (248, 113, 113),
                     "reason": f"Augmenting path {path} has bottleneck capacity {bottleneck} g/min.",
-                    "result_text": f"➔ PUMPED +{bottleneck} g/min via ({u} ➔ {v})!",
+                    "result_text": f"-> PUMPED +{bottleneck} g/min via ({u} -> {v})!",
                     "after_chosen": set(chosen_edges),
                     "after_rejected": set(),
                     "after_weight": total_max_flow

@@ -1,18 +1,21 @@
 """
 Module: ung_dung_thuc_te/gui_dashboard.py
-Purpose: Multi-view Full-HD 3-Column Dashboard for the Smart Vacuum Robot Simulation.
-Compatible with Fullscreen and Hardware Scaling on Windows, macOS, and Linux:
-  - COLUMN 1 (Left): 3D Isometric Apartment (360° rotation, 40%-300% zoom, 3D obstacle avoidance, glowing robot).
-  - COLUMN 2 (Center): Mathematical Graph G = (V, E) (25 nodes, 36 non-overlapping Bézier curved edges, energy pulse).
-  - COLUMN 3 (Right): Live Pseudocode & Mathematical Variable Inspector (Line highlighting, real-time DSU/Queue/Flow).
+Purpose: Cross-Platform Multi-View Dashboard for the Smart Vacuum Robot Simulation.
+Engineered for Windows, macOS, and Linux:
+  - 100% Crisp Typography (Universal cross-platform fonts, zero tofu/broken glyphs).
+  - Hardware-accelerated Linear Scaling (os.environ["SDL_RENDER_SCALE_QUALITY"] = "linear").
+  - Seamless Fullscreen F11 & Window Resizing without resolution stretching or blur.
+  - Pixel-perfect Mouse Hit Detection in any window/display configuration.
 """
 
 import sys
 import math
 import os
-import pygame
 
-# Enable Per-Monitor DPI Awareness on Windows to prevent coordinate distortion
+# 1. Hardware Linear Texture Filtering: Eliminates pixelation and jaggedness when scaling
+os.environ["SDL_RENDER_SCALE_QUALITY"] = "linear"
+
+# 2. Windows Per-Monitor DPI Awareness: Prevents OS DWM coordinate distortion
 if sys.platform == "win32":
     try:
         import ctypes
@@ -22,6 +25,8 @@ if sys.platform == "win32":
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
+
+import pygame
 
 from ung_dung_thuc_te.data_model import (
     HOUSE_NODES_DATA, HOUSE_BASE_COORDS, HOUSE_EDGES,
@@ -64,9 +69,21 @@ COLOR_TEXT_MUTED = (148, 163, 184)
 
 
 def get_ui_font(size, bold=False):
-    """Loads cross-platform typography font supporting Unicode."""
+    """
+    Loads cross-platform typography font supporting clean rendering across Windows, macOS, Linux.
+    Tries modern system fonts in order of platform priority, with universal fallback.
+    """
     candidates = [
-        "segoeui", "arial", "dejavusans", "liberationsans", "notosans", "tahoma", "helvetica"
+        "segoeui",          # Windows modern default
+        "sfpro",            # macOS modern default
+        "helveticaneue",    # macOS standard
+        "helvetica",        # macOS standard
+        "arial",            # Universal cross-platform
+        "dejavusans",       # Linux standard
+        "liberationsans",   # Linux standard
+        "notosans",         # Linux / Android standard
+        "tahoma",           # Windows fallback
+        "freesans"          # Linux fallback
     ]
     for font_name in candidates:
         try:
@@ -80,12 +97,12 @@ def get_ui_font(size, bold=False):
 
 class SmartRobotSimulationApp:
     """
-    Coordinator class for the Smart Vacuum Robot Practical Simulation.
-    Uses Virtual Canvas 1920x1080 with Hardware Scaling for fullscreen fidelity.
+    Coordinator class for the Smart Vacuum Robot Simulation Dashboard.
+    Uses Virtual Canvas 1920x1080 with Hardware Linear Scaling for pristine visual quality.
     """
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("SMART VACUUM ROBOT — REAL-WORLD GRAPH THEORY DASHBOARD")
+        pygame.display.set_caption("SMART VACUUM ROBOT - REAL-WORLD GRAPH THEORY DASHBOARD")
 
         self.is_fullscreen = False
         self.screen = pygame.display.set_mode(
@@ -93,13 +110,13 @@ class SmartRobotSimulationApp:
         )
         self.clock = pygame.time.Clock()
 
-        # Typography hierarchy
-        self.font_title = get_ui_font(15, bold=True)
-        self.font_main = get_ui_font(13, bold=True)
-        self.font_body = get_ui_font(11, bold=False)
-        self.font_code = get_ui_font(11, bold=True)
-        self.font_tag = get_ui_font(10, bold=True)
-        self.font_small = get_ui_font(10, bold=False)
+        # Upgraded Typography Hierarchy (Crisp & Legible at 1080p, 1440p, 4K, and Scaled Displays)
+        self.font_title = get_ui_font(16, bold=True)  # Column headers
+        self.font_main = get_ui_font(14, bold=True)   # Buttons, key variables
+        self.font_body = get_ui_font(12, bold=False)  # Descriptions & status
+        self.font_code = get_ui_font(12, bold=True)   # Pseudocode monospace
+        self.font_tag = get_ui_font(11, bold=True)    # Badges & node IDs
+        self.font_small = get_ui_font(11, bold=False) # Hints & legends
 
         # Apartment Data Model
         self.nodes_data = dict(HOUSE_NODES_DATA)
@@ -179,50 +196,15 @@ class SmartRobotSimulationApp:
             buttons.append((rect, label, mode_id, color))
         self.top_buttons = buttons
 
-    def to_canvas_pos(self, pos):
+    def is_top_button_hit(self, rect, pos):
         """
-        Converts physical window coordinates to 1920x1080 canvas coordinates.
-        Accounts for letterboxing/pillarboxing and hardware scaling on Windows/Linux/macOS.
+        Precise hit detection for top buttons.
+        Expands vertically by 8px (y from 2 to 48) for easy clicking,
+        with ZERO horizontal overlap so each button is exclusively triggered.
         """
         if pos is None:
-            return (0, 0)
-        win_w, win_h = pygame.display.get_window_size()
-        if win_w <= 0 or win_h <= 0 or (win_w == CANVAS_WIDTH and win_h == CANVAS_HEIGHT):
-            return pos
-
-        scale = min(win_w / CANVAS_WIDTH, win_h / CANVAS_HEIGHT)
-        if scale <= 0:
-            return pos
-
-        offset_x = (win_w - CANVAS_WIDTH * scale) / 2.0
-        offset_y = (win_h - CANVAS_HEIGHT * scale) / 2.0
-
-        cx = (pos[0] - offset_x) / scale
-        cy = (pos[1] - offset_y) / scale
-        return (cx, cy)
-
-    def is_rect_hit(self, rect, event=None, mouse_pos=None, inflate_x=4, inflate_y=8):
-        """
-        Robust hit detection checking direct coordinates and canvas-transformed coordinates.
-        Solves Pygame SCALED mouse coordinate mismatch on Windows high-DPI displays.
-        """
-        target = rect.inflate(inflate_x, inflate_y) if (inflate_x or inflate_y) else rect
-        candidates = []
-        if event is not None and hasattr(event, "pos"):
-            candidates.append(event.pos)
-            candidates.append(self.to_canvas_pos(event.pos))
-        if mouse_pos is not None:
-            candidates.append(mouse_pos)
-            candidates.append(self.to_canvas_pos(mouse_pos))
-        else:
-            raw_pos = pygame.mouse.get_pos()
-            candidates.append(raw_pos)
-            candidates.append(self.to_canvas_pos(raw_pos))
-
-        for pt in candidates:
-            if target.collidepoint(pt):
-                return True
-        return False
+            return False
+        return rect.inflate(0, 8).collidepoint(pos)
 
     def get_column1_pos(self, node_id, z=0):
         """Projects (x, y, z) apartment coordinates to Column 1 screen space."""
@@ -322,7 +304,7 @@ class SmartRobotSimulationApp:
             inv = 1.0 - t
             bx = inv * inv * x1 + 2 * inv * t * ctrl_x + t * t * x2
             by = inv * inv * y1 + 2 * inv * t * ctrl_y + t * t * y2
-            pts.append((int(bx), int(by)) if i not in (0, num_segments) else (int(bx), int(by)))
+            pts.append((int(bx), int(by)))
 
         mid_x = 0.25 * x1 + 0.5 * ctrl_x + 0.25 * x2
         mid_y = 0.25 * y1 + 0.5 * ctrl_y + 0.25 * y2
@@ -360,11 +342,11 @@ class SmartRobotSimulationApp:
         surf.fill(COLOR_CARD_BG)
 
         mode_str = "3D ISOMETRIC" if self.is_3d_mode else "2D TOP-DOWN"
-        t_col1 = self.font_main.render(f"🏠 COLUMN 1: APARTMENT FLOORPLAN ({mode_str})", True, COLOR_TEXT_CYAN)
-        surf.blit(t_col1, (16, 12))
+        t_col1 = self.font_title.render(f"COL 1: APARTMENT FLOORPLAN ({mode_str})", True, COLOR_TEXT_CYAN)
+        surf.blit(t_col1, (16, 10))
 
         zoom_pct = int(round(self.cam_zoom * 100))
-        surf.blit(self.font_small.render(f"Scroll / Keys [+/-] Zoom: {zoom_pct}% • Left-Drag: Rotate • Right-Drag: Pan", True, COLOR_TEXT_MUTED), (16, 30))
+        surf.blit(self.font_small.render(f"Scroll / Keys [+/-] Zoom: {zoom_pct}% | Left-Drag: Rotate | Right-Drag: Pan", True, COLOR_TEXT_MUTED), (16, 30))
 
         # Zoom Out [-]
         z_out_rx = COL1_WIDTH - 192
@@ -529,10 +511,10 @@ class SmartRobotSimulationApp:
         surf = pygame.Surface((COL2_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
-        t_col2 = self.font_main.render("📐 COLUMN 2: MATHEMATICAL GRAPH G = (V, E)", True, COLOR_TEXT_GOLD)
-        surf.blit(t_col2, (16, 12))
+        t_col2 = self.font_title.render("COL 2: MATHEMATICAL GRAPH G = (V, E)", True, COLOR_TEXT_GOLD)
+        surf.blit(t_col2, (16, 10))
 
-        surf.blit(self.font_small.render("100% Non-overlapping Bézier Curved Edges • Clear Topology", True, COLOR_TEXT_MUTED), (16, 30))
+        surf.blit(self.font_small.render("Non-overlapping Bezier Curved Edges | Clear Planar Topology", True, COLOR_TEXT_MUTED), (16, 30))
 
         graph_bg = pygame.Rect(12, 48, COL2_WIDTH - 24, COL_HEIGHT - 62)
         pygame.draw.rect(surf, (15, 23, 42), graph_bg, border_radius=6)
@@ -627,8 +609,8 @@ class SmartRobotSimulationApp:
         surf = pygame.Surface((COL3_WIDTH, COL_HEIGHT))
         surf.fill(COLOR_CARD_BG)
 
-        t_col3 = self.font_main.render("🔍 COLUMN 3: PSEUDOCODE & LIVE MATH INSPECTOR", True, (244, 114, 182))
-        surf.blit(t_col3, (16, 12))
+        t_col3 = self.font_title.render("COL 3: PSEUDOCODE & LIVE MATH INSPECTOR", True, (244, 114, 182))
+        surf.blit(t_col3, (16, 10))
 
         step_txt = f"Step: {self.current_step_idx + 1}/{len(self.steps)}" if self.steps else "Ready"
         surf.blit(self.font_small.render(f"Active Mode: {self.active_mode} ALGORITHM | {step_txt}", True, COLOR_TEXT_MUTED), (16, 30))
@@ -645,16 +627,16 @@ class SmartRobotSimulationApp:
 
         if cur_step and "pseudocode" in cur_step:
             active_line = cur_step.get("pseudocode_line", 1)
-            line_y = py + 26
+            line_y = py + 28
             for idx, pline in enumerate(cur_step["pseudocode"]):
                 is_cur_line = (idx + 1 == active_line)
                 if is_cur_line:
-                    hl_rect = pygame.Rect(18, line_y - 2, COL3_WIDTH - 36, 18)
+                    hl_rect = pygame.Rect(18, line_y - 2, COL3_WIDTH - 36, 19)
                     pygame.draw.rect(surf, (55, 48, 163), hl_rect, border_radius=3)
-                    surf.blit(self.font_code.render(f"▶ {pline}", True, COLOR_TEXT_GOLD), (22, line_y))
+                    surf.blit(self.font_code.render(f"> {pline}", True, COLOR_TEXT_GOLD), (22, line_y))
                 else:
                     surf.blit(self.font_code.render(f"  {pline}", True, (203, 213, 225)), (22, line_y))
-                line_y += 19
+                line_y += 20
 
         py += h1 + 10
 
@@ -671,14 +653,14 @@ class SmartRobotSimulationApp:
             v_name = self.nodes_data.get(v, {}).get("name", f"Node {v}")
             w = cur_step.get("scanned_weight", 0.0)
 
-            surf.blit(self.font_main.render(f"STEP {self.current_step_idx + 1}/{len(self.steps)}: EVALUATING EDGE ({u} ↔ {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
-            surf.blit(self.font_body.render(f"• Scanning path: [{u}] {u_name} ➔ [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 28))
+            surf.blit(self.font_main.render(f"STEP {self.current_step_idx + 1}/{len(self.steps)}: EVALUATING EDGE ({u} <-> {v})", True, COLOR_TEXT_GOLD), (22, py + 8))
+            surf.blit(self.font_body.render(f"> Scanning path: [{u}] {u_name} -> [{v}] {v_name} (w = {w:.1f}m)", True, COLOR_TEXT_WHITE), (22, py + 30))
 
-            surf.blit(self.font_main.render("• Mathematical Condition:", True, (244, 114, 182)), (22, py + 48))
-            surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (26, py + 66))
+            surf.blit(self.font_main.render("> Mathematical Condition:", True, (244, 114, 182)), (22, py + 52))
+            surf.blit(self.font_body.render(cur_step.get("reason", ""), True, (226, 232, 240)), (26, py + 72))
 
-            surf.blit(self.font_main.render("• Action:", True, COLOR_TEXT_GREEN), (22, py + 90))
-            surf.blit(self.font_main.render(cur_step.get("result_text", ""), True, cur_step.get("status_color", COLOR_TEXT_CYAN)), (26, py + 108))
+            surf.blit(self.font_main.render("> Action:", True, COLOR_TEXT_GREEN), (22, py + 96))
+            surf.blit(self.font_main.render(cur_step.get("result_text", ""), True, cur_step.get("status_color", COLOR_TEXT_CYAN)), (26, py + 118))
 
         py += h2 + 10
 
@@ -691,57 +673,59 @@ class SmartRobotSimulationApp:
         surf.blit(self.font_tag.render("LIVE MATHEMATICAL VARIABLES STATE:", True, COLOR_TEXT_CYAN), (22, py + 8))
 
         if cur_step and "math_state" in cur_step:
-            var_y = py + 26
+            var_y = py + 30
             for k, val in cur_step["math_state"].items():
-                surf.blit(self.font_body.render(f"• {k}:", True, (148, 163, 184)), (22, var_y))
+                surf.blit(self.font_body.render(f"> {k}:", True, (148, 163, 184)), (22, var_y))
                 surf.blit(self.font_main.render(str(val), True, COLOR_TEXT_GOLD), (220, var_y))
-                var_y += 19
+                var_y += 20
 
             chosen_list = list(cur_step["after_chosen"])
-            c_y = var_y + 8
-            chosen_str = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[:10]])
+            c_y = var_y + 10
+            chosen_str = ", ".join([f"({cu}<->{cv})" for cu, cv in chosen_list[:10]])
             surf.blit(self.font_small.render(f"Selected Edges ({len(chosen_list)}): {chosen_str}", True, (226, 232, 240)), (22, c_y))
             if len(chosen_list) > 10:
-                chosen_str2 = ", ".join([f"({cu}↔{cv})" for cu, cv in chosen_list[10:20]])
-                surf.blit(self.font_small.render(f"                         {chosen_str2}", True, (226, 232, 240)), (22, c_y + 16))
+                chosen_str2 = ", ".join([f"({cu}<->{cv})" for cu, cv in chosen_list[10:20]])
+                surf.blit(self.font_small.render(f"                         {chosen_str2}", True, (226, 232, 240)), (22, c_y + 18))
 
         # 4. STEP CONTROLLER BUTTONS
         btn_y = COL_HEIGHT - 46
+        mouse_pos = pygame.mouse.get_pos()
 
-        is_h_p = self.is_rect_hit(self.btn_prev_rect, inflate_x=0, inflate_y=0)
+        is_h_p = self.btn_prev_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (51, 65, 85) if is_h_p else (30, 41, 59), (12, btn_y, 90, 36), border_radius=5)
         pygame.draw.rect(surf, COLOR_TEXT_CYAN, (12, btn_y, 90, 36), width=1, border_radius=5)
-        surf.blit(self.font_body.render("◀ PREV [B]", True, (255, 255, 255)), (18, btn_y + 10))
+        surf.blit(self.font_main.render("< PREV [B]", True, (255, 255, 255)), (18, btn_y + 9))
 
-        is_h_n = self.is_rect_hit(self.btn_next_rect, inflate_x=0, inflate_y=0)
+        is_h_n = self.btn_next_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (14, 116, 144) if is_h_n else (8, 145, 178), (108, btn_y, 110, 36), border_radius=5)
         pygame.draw.rect(surf, (255, 255, 255) if is_h_n else COLOR_TEXT_CYAN, (108, btn_y, 110, 36), width=1, border_radius=5)
-        surf.blit(self.font_main.render("NEXT [S] ▶", True, (255, 255, 255)), (120, btn_y + 9))
+        surf.blit(self.font_main.render("NEXT [S] >", True, (255, 255, 255)), (120, btn_y + 9))
 
         auto_bg = (5, 150, 105) if self.is_auto_playing else (51, 65, 85)
         pygame.draw.rect(surf, auto_bg, (224, btn_y, 140, 36), border_radius=5)
         pygame.draw.rect(surf, COLOR_TEXT_GREEN if self.is_auto_playing else (148, 163, 184), (224, btn_y, 140, 36), width=1, border_radius=5)
-        auto_lbl = "⏸️ PAUSE [SPACE]" if self.is_auto_playing else "▶️ AUTO PLAY"
-        surf.blit(self.font_body.render(auto_lbl, True, (255, 255, 255)), (232, btn_y + 10))
+        auto_lbl = "PAUSE [SPACE]" if self.is_auto_playing else "AUTO PLAY"
+        surf.blit(self.font_main.render(auto_lbl, True, (255, 255, 255)), (234, btn_y + 9))
 
-        is_h_r = self.is_rect_hit(self.btn_reset_rect, inflate_x=0, inflate_y=0)
+        is_h_r = self.btn_reset_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (71, 85, 105) if is_h_r else (51, 65, 85), (370, btn_y, 80, 36), border_radius=5)
         pygame.draw.rect(surf, (148, 163, 184), (370, btn_y, 80, 36), width=1, border_radius=5)
-        surf.blit(self.font_body.render("🔄 RESET [R]", True, (255, 255, 255)), (374, btn_y + 10))
+        surf.blit(self.font_main.render("RESET [R]", True, (255, 255, 255)), (374, btn_y + 9))
 
         fs_w = max(40, COL3_WIDTH - 12 - 456)
-        is_h_fs = self.is_rect_hit(self.btn_fullscreen_rect, inflate_x=0, inflate_y=0)
+        is_h_fs = self.btn_fullscreen_rect.collidepoint(mouse_pos)
         pygame.draw.rect(surf, (14, 165, 233) if is_h_fs else (3, 105, 161), (456, btn_y, fs_w, 36), border_radius=5)
-        surf.blit(self.font_tag.render("⛶ F11", True, (255, 255, 255)), (464, btn_y + 10))
+        surf.blit(self.font_tag.render("[F11] FULL", True, (255, 255, 255)), (464, btn_y + 10))
 
         self.screen.blit(surf, (COL3_X, COL_Y))
         pygame.draw.rect(self.screen, COLOR_CARD_BORDER, (COL3_X, COL_Y, COL3_WIDTH, COL_HEIGHT), 2)
 
     def draw_top_bar(self):
         """Renders the top algorithm navigation bar."""
+        mouse_pos = pygame.mouse.get_pos()
         for rect, label, mode_id, color in self.top_buttons:
             is_act = (self.active_mode == mode_id)
-            is_hov = self.is_rect_hit(rect, inflate_x=0, inflate_y=0)
+            is_hov = self.is_top_button_hit(rect, mouse_pos)
 
             bg_c = (color[0]//2, color[1]//2, color[2]//2) if is_act else ((51, 65, 85) if is_hov else (17, 24, 39))
             border_c = color if is_act else ((148, 163, 184) if is_hov else (31, 41, 55))
@@ -790,16 +774,26 @@ class SmartRobotSimulationApp:
             self.anim_t = 0.0
 
     def toggle_fullscreen(self):
-        """Toggles fullscreen cleanly while preserving aspect ratio."""
+        """
+        Toggles fullscreen cleanly while preserving 16:9 aspect ratio and visual fidelity.
+        Uses native desktop resolution to avoid stretching or pixel distortion on Windows, Mac, Linux.
+        """
         self.is_fullscreen = not self.is_fullscreen
+        try:
+            # Pygame 2 / SDL2 native toggle (fast and maintains context)
+            if pygame.display.toggle_fullscreen():
+                return
+        except Exception:
+            pass
+
+        # Fallback method if display driver does not support dynamic toggle
+        flags = pygame.SCALED
         if self.is_fullscreen:
-            self.screen = pygame.display.set_mode(
-                (CANVAS_WIDTH, CANVAS_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
-            )
+            flags |= pygame.FULLSCREEN
         else:
-            self.screen = pygame.display.set_mode(
-                (CANVAS_WIDTH, CANVAS_HEIGHT), pygame.RESIZABLE | pygame.SCALED
-            )
+            flags |= pygame.RESIZABLE
+
+        self.screen = pygame.display.set_mode((CANVAS_WIDTH, CANVAS_HEIGHT), flags)
 
     def run(self):
         """Main game loop handling events, simulation state, and rendering."""
@@ -807,7 +801,6 @@ class SmartRobotSimulationApp:
         while running:
             self.clock.tick(FPS)
             raw_mx, raw_my = pygame.mouse.get_pos()
-            can_mx, can_my = self.to_canvas_pos((raw_mx, raw_my))
 
             self.lidar_angle = (self.lidar_angle + 5.0) % 360.0
 
@@ -828,17 +821,23 @@ class SmartRobotSimulationApp:
                 if event.type == pygame.QUIT:
                     running = False
 
+                elif event.type == pygame.VIDEORESIZE:
+                    # Pygame SCALED automatically scales viewport
+                    pass
+
                 elif event.type == pygame.MOUSEWHEEL:
-                    can_x, can_y = self.to_canvas_pos((raw_mx, raw_my))
-                    if can_x <= COL1_X + COL1_WIDTH:
+                    mx, my = pygame.mouse.get_pos()
+                    if mx <= COL1_X + COL1_WIDTH:
                         self.cam_zoom = max(0.4, min(3.0, self.cam_zoom + event.y * 0.08))
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
-                        # 1. Check Top Algorithm Navigation Buttons (with robust multi-coord hit testing)
+                        click_pos = event.pos
+
+                        # 1. Check Top Algorithm Navigation Buttons (100% precise in any window size)
                         top_clicked = False
                         for rect, _, mode_id, _ in self.top_buttons:
-                            if self.is_rect_hit(rect, event=event, inflate_x=4, inflate_y=10):
+                            if self.is_top_button_hit(rect, click_pos):
                                 self.switch_mode(mode_id)
                                 top_clicked = True
                                 break
@@ -847,43 +846,41 @@ class SmartRobotSimulationApp:
                             continue
 
                         # 2. Check Column 1 Zoom / 3D Mode Buttons
-                        if self.is_rect_hit(self.btn_zoom_out_rect, event=event):
+                        if self.btn_zoom_out_rect.inflate(4, 4).collidepoint(click_pos):
                             self.cam_zoom = max(0.4, self.cam_zoom - 0.15)
-                        elif self.is_rect_hit(self.btn_zoom_in_rect, event=event):
+                        elif self.btn_zoom_in_rect.inflate(4, 4).collidepoint(click_pos):
                             self.cam_zoom = min(3.0, self.cam_zoom + 0.15)
-                        elif self.is_rect_hit(self.btn_zoom_badge_rect, event=event):
+                        elif self.btn_zoom_badge_rect.inflate(4, 4).collidepoint(click_pos):
                             self.cam_zoom = 1.15
                             self.cam_pan_x = 0
                             self.cam_pan_y = 0
-                        elif self.is_rect_hit(self.btn_view_3d_rect, event=event):
+                        elif self.btn_view_3d_rect.inflate(4, 4).collidepoint(click_pos):
                             self.is_3d_mode = not self.is_3d_mode
 
                         # 3. Check Column 3 Step Controller Buttons
-                        elif self.is_rect_hit(self.btn_prev_rect, event=event):
+                        elif self.btn_prev_rect.inflate(4, 4).collidepoint(click_pos):
                             self.step_prev()
-                        elif self.is_rect_hit(self.btn_next_rect, event=event):
+                        elif self.btn_next_rect.inflate(4, 4).collidepoint(click_pos):
                             self.step_next()
-                        elif self.is_rect_hit(self.btn_auto_rect, event=event):
+                        elif self.btn_auto_rect.inflate(4, 4).collidepoint(click_pos):
                             self.is_auto_playing = not self.is_auto_playing
-                        elif self.is_rect_hit(self.btn_reset_rect, event=event):
+                        elif self.btn_reset_rect.inflate(4, 4).collidepoint(click_pos):
                             self.current_step_idx = 0
                             self.is_auto_playing = False
                             self.anim_t = 0.0
-                        elif self.is_rect_hit(self.btn_fullscreen_rect, event=event):
+                        elif self.btn_fullscreen_rect.inflate(4, 4).collidepoint(click_pos):
                             self.toggle_fullscreen()
 
                         # 4. Canvas Dragging for 3D Camera Rotation
-                        else:
-                            click_x, click_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
-                            if click_x < COL1_X + COL1_WIDTH and click_y > COL_Y:
-                                self.is_dragging_3d = True
-                                self.last_mouse_pos = (click_x, click_y)
+                        elif click_pos[0] < COL1_X + COL1_WIDTH and click_pos[1] > COL_Y:
+                            self.is_dragging_3d = True
+                            self.last_mouse_pos = click_pos
 
                     elif event.button == 3:
-                        click_x, click_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
-                        if click_x < COL1_X + COL1_WIDTH and click_y > COL_Y:
+                        click_pos = event.pos
+                        if click_pos[0] < COL1_X + COL1_WIDTH and click_pos[1] > COL_Y:
                             self.is_panning_3d = True
-                            self.last_mouse_pos = (click_x, click_y)
+                            self.last_mouse_pos = click_pos
 
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -892,19 +889,19 @@ class SmartRobotSimulationApp:
                         self.is_panning_3d = False
 
                 elif event.type == pygame.MOUSEMOTION:
-                    cur_x, cur_y = self.to_canvas_pos(event.pos) if hasattr(event, 'pos') else (can_mx, can_my)
+                    cur_pos = event.pos
                     if self.is_dragging_3d and self.is_3d_mode:
-                        dx = cur_x - self.last_mouse_pos[0]
-                        dy = cur_y - self.last_mouse_pos[1]
+                        dx = cur_pos[0] - self.last_mouse_pos[0]
+                        dy = cur_pos[1] - self.last_mouse_pos[1]
                         self.cam_yaw = (self.cam_yaw + dx * 0.5) % 360.0
                         self.cam_pitch = max(10.0, min(85.0, self.cam_pitch - dy * 0.5))
-                        self.last_mouse_pos = (cur_x, cur_y)
+                        self.last_mouse_pos = cur_pos
                     elif self.is_panning_3d:
-                        dx = cur_x - self.last_mouse_pos[0]
-                        dy = cur_y - self.last_mouse_pos[1]
+                        dx = cur_pos[0] - self.last_mouse_pos[0]
+                        dy = cur_pos[1] - self.last_mouse_pos[1]
                         self.cam_pan_x += dx
                         self.cam_pan_y += dy
-                        self.last_mouse_pos = (cur_x, cur_y)
+                        self.last_mouse_pos = cur_pos
 
                 elif event.type == pygame.KEYDOWN:
                     if event.key in [pygame.K_RIGHT, pygame.K_s]:
