@@ -1,25 +1,38 @@
 # -*- coding: utf-8 -*-
 """
 Module: ung_dung_thuc_te/router.py
-Điều hướng lộ trình ngắn nhất bằng thuật toán Dijkstra chuẩn Toán Rời Rạc (CTRR).
-Mô phỏng đầy đủ:
-  - Bước chọn đỉnh u* có d[u] nhỏ nhất trong tập chưa xét (Chốt nhãn vĩnh viễn)
-  - Quá trình nới lỏng từng cạnh kề: d[v] = min(d[v], d[u] + w(u, v))
-  - Cập nhật nhãn khoảng cách d[v] và đỉnh cha parent[v]
-  - Bảng ma trận bước lặp (Bảng vết đối chiếu bài thi CTRR)
+Hệ thống Điều hướng Lộ trình Tối ưu bằng Thuật toán Dijkstra chuẩn Toán Rời Rạc (CTRR).
+
+Điểm nổi bật:
+  1. Dijkstra từng bước với bảng vết CTRR:
+     - Ghi nhận đỉnh chọn u* = argmin d[u] (Chốt nhãn cố định).
+     - Chi tiết từng phép so sánh nới lỏng cạnh: d[u*] + w < d[v].
+     - Lưu trữ snapshot vector d[v], visited[v], parent[v] để vẽ bảng ma trận bước lặp.
+  2. Dẫn đường thích ứng với Kẹt xe động (Dynamic Traffic Routing):
+     - Trọng số cạnh biến thiên theo thời gian thực:
+       Weight = Length * (1.0 + JamLevel * 2.5)
+  3. [CODE KHÓ]: Thuật toán Tìm 3 Tuyến đường ứng viên (Candidate Routes):
+     - Tuyến 1: Tuyến tối ưu tuyệt đối (Dijkstra thuần trên đồ thị động).
+     - Tuyến 2 & 3: Các tuyến dự phòng độc lập sử dụng Phương pháp Phạt trọng số cạnh (Penalty Method).
+     - Đảm bảo các tuyến không trùng lặp và tính lại chi phí thực tế trên đồ thị gốc.
 """
 from core.shortest_path import dijkstra
 
 
 class DijkstraRouter:
-    """Quản lý tính toán và hoạt họa từng bước chuẩn thuật toán Dijkstra trong CTRR."""
+    """Lớp quản lý điều hướng lộ trình và hoạt họa từng bước chuẩn thuật toán Dijkstra trong CTRR."""
     def __init__(self, city_graph):
         self.city_graph = city_graph
 
     def compute_route_with_trace(self, start_node, end_node):
         """
-        Thực thi Dijkstra chuẩn CTRR từng bước:
-        Ghi nhận chi tiết: Đỉnh chọn u*, các phép so sánh Relaxation, và vector khoảng cách d[v].
+        [CODE KHÓ]: Thực thi Dijkstra chuẩn CTRR từng bước với đầy đủ lịch sử nới lỏng (Relaxation).
+        
+        Quy trình toán học:
+          - Bước 1 (Greedy Choice): Tìm đỉnh u* chưa thăm có d[u*] nhỏ nhất.
+          - Bước 2 (Relaxation): Với mỗi đỉnh kề v của u*:
+            + Kiểm tra: Nếu d[u*] + w < d[v] -> Cập nhật d[v] = d[u*] + w, parent[v] = u*.
+          - Ghi nhận snapshot của mảng d, visited, parent vào `ctrr_steps` phục vụ hiển thị bảng ma trận.
         """
         n = self.city_graph.n
         dyn_adj = self.city_graph.get_dynamic_adj()
@@ -33,7 +46,9 @@ class DijkstraRouter:
         step_count = 0
 
         while True:
+            # -----------------------------------------------------------------
             # 1. TÌM ĐỈNH u* CÓ d[u] NHỎ NHẤT TRONG TẬP CHƯA THĂM (GREEDY CHOICE)
+            # -----------------------------------------------------------------
             u_star = -1
             min_dist = float('inf')
             for i in range(n):
@@ -41,14 +56,17 @@ class DijkstraRouter:
                     min_dist = dist[i]
                     u_star = i
 
-            # Nếu không còn đỉnh nào đến được hoặc đã đến đích
+            # Nếu không còn đỉnh nào đến được hoặc đồ thị bị chia cắt
             if u_star == -1 or dist[u_star] == float('inf'):
                 break
 
+            # Chốt đỉnh u* (Cố định nhãn khoảng cách vĩnh viễn)
             visited[u_star] = True
             step_count += 1
 
-            # 2. NỚI LỎNG (RELAXATION) CÁC ĐỈNH KỀ v CỦA u*
+            # -----------------------------------------------------------------
+            # 2. NỚI LỎNG (RELAXATION) CÁC CẠNH KỀ (u*, v)
+            # -----------------------------------------------------------------
             relaxations = []
             for v, w in dyn_adj.get(u_star, []):
                 old_d = dist[v]
@@ -72,7 +90,7 @@ class DijkstraRouter:
                     "v_name": self.city_graph.nodes[v]["name"]
                 })
 
-            # Ghi lại khung dữ liệu bước lặp chuẩn CTRR
+            # Ghi lại snapshot bước lặp chuẩn CTRR
             ctrr_steps.append({
                 "step": step_count,
                 "u_star": u_star,
@@ -85,11 +103,13 @@ class DijkstraRouter:
                 "parent_snapshot": list(parent)
             })
 
-            # Nếu đã chốt xong đỉnh đích
+            # Dừng sớm nếu đã chốt xong nhãn tối ưu của đỉnh đích
             if u_star == end_node:
                 break
 
+        # ---------------------------------------------------------------------
         # 3. TRUY VẾT TÌM ĐƯỜNG ĐI (BACKTRACKING)
+        # ---------------------------------------------------------------------
         path = None
         cost = None
         if dist[end_node] != float('inf'):
@@ -107,7 +127,7 @@ class DijkstraRouter:
             "dist": dist,
             "parent": parent,
             "ctrr_steps": ctrr_steps,
-            "visual_steps": ctrr_steps, # Alias tương thích
+            "visual_steps": ctrr_steps,
             "success": (path is not None)
         }
 
@@ -162,13 +182,23 @@ class DijkstraRouter:
 
     def find_candidate_routes(self, start_node, end_node, max_candidates=3):
         """
-        Tìm các tuyến đường ứng viên (Tuyến 1: Tối ưu, Tuyến 2: Phương án phụ 1, Tuyến 3: Phương án phụ 2)
-        để trực quan hóa quy trình dò từng đường và đối chiếu so sánh cự ly trước khi chốt.
+        [CODE KHÓ]: Tìm 3 Tuyến đường ứng viên (1 Tuyến chính + 2 Tuyến dự phòng)
+        sử dụng Kỹ thuật Phạt Trọng số Cạnh (Penalty Method / Biến thể Yen's K-Shortest Paths).
+
+        Nguyên lý:
+          1. Tuyến 1 (Optimal): Chạy Dijkstra thuần trên ma trận trọng số động.
+          2. Tuyến 2 (Backup 1): Lần lượt phạt nặng (nhân 5.0) từng cạnh của Tuyến 1,
+             buộc Dijkstra phải rẽ sang nhánh khác để tìm đường vòng.
+             Lấy phương án có chi phí gốc thấp nhất trong các đường vòng tìm được.
+          3. Tuyến 3 (Backup 2): Phạt đồng thời các cạnh của cả Tuyến 1 và Tuyến 2,
+             tìm ra đường vòng thứ 3 hoàn toàn độc lập.
         """
         n = self.city_graph.n
         dyn_adj = self.city_graph.get_dynamic_adj()
 
-        # 1. Tuyến tối ưu tuyệt đối (Dijkstra chuẩn)
+        # ---------------------------------------------------------------------
+        # 1. TUYẾN 1: TUYẾN TỐI ƯU TUYỆT ĐỐI (DIJKSTRA CHUẨN)
+        # ---------------------------------------------------------------------
         res1 = dijkstra(dyn_adj, n, start=start_node, end=end_node)
         if not res1 or not res1.get("path"):
             return []
@@ -196,16 +226,20 @@ class DijkstraRouter:
         if max_candidates <= 1 or len(p1) < 2:
             return routes
 
-        # 2. Tìm tuyến ứng viên thứ 2 (Candidate 2) bằng cách tăng trọng số cạnh của Tuyến 1
+        # ---------------------------------------------------------------------
+        # 2. TUYẾN 2: TÌM TUYẾN DỰ PHÒNG THỨ 2 BẰNG KỸ THUẬT PHẠT CẠNH CỦA TUYẾN 1
+        # ---------------------------------------------------------------------
         best_alt1 = None
         best_alt1_cost = float('inf')
 
         for i in range(len(p1) - 1):
             u_edge, v_edge = p1[i], p1[i + 1]
+            # Tạo đồ thị biến đổi có phạt trọng số
             adj_mod = {}
             for u, nbrs in dyn_adj.items():
                 adj_mod[u] = []
                 for v, w in nbrs:
+                    # Nếu là cạnh thuộc Tuyến 1 -> Tăng chi phí gấp 5 lần để Dijkstra tránh đi vào
                     if (u == u_edge and v == v_edge) or (u == v_edge and v == u_edge):
                         adj_mod[u].append((v, w * 5.0))
                     else:
@@ -214,6 +248,7 @@ class DijkstraRouter:
             res_alt = dijkstra(adj_mod, n, start=start_node, end=end_node)
             p_alt = res_alt.get("path")
             if p_alt and p_alt != p1:
+                # Tính lại chi phí THỰC TẾ trên đồ thị gốc (không nhân hệ số phạt)
                 true_cost = 0.0
                 valid = True
                 for k in range(len(p_alt) - 1):
@@ -227,6 +262,7 @@ class DijkstraRouter:
                         break
                     true_cost += orig_w
 
+                # Chọn phương án dự phòng có chi phí thực tế nhỏ nhất
                 if valid and true_cost < best_alt1_cost and p_alt != p1:
                     best_alt1_cost = true_cost
                     best_alt1 = p_alt
@@ -252,7 +288,9 @@ class DijkstraRouter:
                 "steps": self._build_route_steps(best_alt1)
             })
 
-        # 3. Tìm tuyến ứng viên thứ 3 (Candidate 3) nếu được yêu cầu
+        # ---------------------------------------------------------------------
+        # 3. TUYẾN 3: TÌM TUYẾN DỰ PHÒNG THỨ 3 BẰNG CÁCH PHẠT CẢ TUYẾN 1 VÀ 2
+        # ---------------------------------------------------------------------
         if max_candidates >= 3 and best_alt1:
             best_alt2 = None
             best_alt2_cost = float('inf')

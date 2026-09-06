@@ -1,13 +1,17 @@
-# =============================================================================
-# THUẬT TOÁN ĐỒ THỊ EULER (EULERIAN PATH & CIRCUIT)
-# =============================================================================
-# Chứa thuật toán kiểm tra tính Euler, thuật toán Fleury và Hierholzer.
-# Ứng dụng: Lập lịch dọn dẹp kỹ (Full Coverage) - Quét 100% các hành lang đúng 1 lần.
-
+# -*- coding: utf-8 -*-
 """
 Module: core/euler.py
-Cài đặt thuật toán kiểm tra tính Euler, thuật toán Fleury (7.1)
-và thuật toán Hierholzer (7.2) tìm Chu trình / Đường đi Euler.
+Cài đặt thuật toán kiểm tra tính Euler, thuật toán Fleury (Mục 7.1)
+và thuật toán Hierholzer (Mục 7.2) tìm Chu trình / Đường đi Euler.
+
+Định lý Euler trong Toán Rời Rạc:
+  1. Đồ thị vô hướng liên thông:
+     - Có Chu trình Euler KHI VÀ CHỈ KHI mọi đỉnh đều có BẬC CHẴN (deg(v) % 2 == 0).
+     - Có Đường đi Euler KHI VÀ CHỈ KHI có ĐÚNG 2 đỉnh bậc lẻ (xuất phát ở 1 đỉnh lẻ và kết thúc ở đỉnh lẻ còn lại).
+  2. Đồ thị có hướng liên thông yếu:
+     - Có Chu trình Euler KHI VÀ CHỈ KHI bán bậc vào = bán bậc ra tại mọi đỉnh (in_deg(v) == out_deg(v)).
+     - Có Đường đi Euler KHI VÀ CHỈ KHI có đúng 1 đỉnh có out_deg = in_deg + 1 (đỉnh bắt đầu),
+       đúng 1 đỉnh có in_deg = out_deg + 1 (đỉnh kết thúc), và mọi đỉnh khác có in_deg == out_deg.
 """
 from collections import deque
 from core.traversal import bfs
@@ -15,24 +19,33 @@ from core.traversal import bfs
 
 def check_eulerian(adj, n, directed=False):
     """
-    Kiểm tra điều kiện tồn tại Chu trình Euler hoặc Đường đi Euler.
+    Kiểm tra điều kiện cần và đủ để tồn tại Chu trình Euler hoặc Đường đi Euler.
+    
+    Trả về Tuple: (has_euler, is_circuit, start_node, message)
+      - has_euler: True nếu tồn tại chu trình hoặc đường đi.
+      - is_circuit: True nếu là Chu trình (bắt đầu và kết thúc cùng 1 đỉnh), False nếu là Đường đi.
+      - start_node: Đỉnh xuất phát hợp lệ.
+      - message: Diễn giải chi tiết lý do toán học.
     """
     if directed:
-        # 1. Đồ thị có hướng
+        # =====================================================================
+        # 1. ĐỒ THỊ CÓ HƯỚNG
+        # =====================================================================
         in_deg = [0] * n
         out_deg = [0] * n
-        # tính bán bậc vào bật ra
+        
+        # Đếm bán bậc vào và bán bậc ra cho từng đỉnh
         for u in range(n):
             for v, _ in adj.get(u, []):
                 out_deg[u] += 1
                 in_deg[v] += 1
 
-        # Đỉnh bắt đầu duyệt liên thông
+        # Tìm đỉnh đầu tiên có cạnh để kiểm tra tính liên thông
         start_bfs = next((u for u in range(n) if out_deg[u] > 0 or in_deg[u] > 0), None)
         if start_bfs is None:
             return True, True, 0, "Đồ thị rỗng (không có cạnh)."
 
-        # Kiểm tra liên thông yếu (bỏ qua hướng của cung)
+        # Kiểm tra tính liên thông yếu (coi các cung có hướng như cạnh vô hướng)
         visited = [False] * n
         queue = deque([start_bfs])
         visited[start_bfs] = True
@@ -50,6 +63,7 @@ def check_eulerian(adj, n, directed=False):
                     visited[v] = True
                     queue.append(v)
 
+        # Nếu có đỉnh nào có cạnh mà không tới được -> Không liên thông yếu
         for u in range(n):
             if (out_deg[u] > 0 or in_deg[u] > 0) and not visited[u]:
                 return False, False, None, "Đồ thị không liên thông, không có Euler."
@@ -77,14 +91,17 @@ def check_eulerian(adj, n, directed=False):
             return False, False, None, "Không tồn tại Chu trình hay Đường đi Euler."
 
     else:
-        # 2. Đồ thị vô hướng
-        deg = [len(adj.get(u, [])) for u in range(n)]  # lấy ra bậc của các đỉnh
+        # =====================================================================
+        # 2. ĐỒ THỊ VÔ HƯỚNG
+        # =====================================================================
+        deg = [len(adj.get(u, [])) for u in range(n)]
 
-        start_bfs = next((u for u in range(n) if deg[u] > 0), None)  # lấy đỉnh ra nếu bậc lớn 0
+        # Tìm đỉnh có bậc > 0 đầu tiên
+        start_bfs = next((u for u in range(n) if deg[u] > 0), None)
         if start_bfs is None:
             return True, True, 0, "Đồ thị rỗng (không có cạnh)."
 
-        # Kiểm tra tính liên thông (tái sử dụng bfs tối ưu, không ghi bảng vết)
+        # Kiểm tra tính liên thông giữa các đỉnh có bậc khác 0
         reachable_nodes, _, _ = bfs(adj, n, start_bfs, record_trace=False)
         visited_set = set(reachable_nodes)
 
@@ -92,6 +109,7 @@ def check_eulerian(adj, n, directed=False):
             if deg[u] > 0 and u not in visited_set:
                 return False, False, None, "Đồ thị không liên thông giữa các đỉnh có cạnh."
 
+        # Đếm các đỉnh có bậc lẻ
         odd_vertices = [u for u in range(n) if deg[u] % 2 != 0]
         odd_count = len(odd_vertices)
 
@@ -106,14 +124,24 @@ def check_eulerian(adj, n, directed=False):
 
 def is_bridge(u, v, adj_copy, n):
     """
-    Kiểm tra cạnh (u, v) có phải là Cầu (Bridge) trong đồ thị vô hướng adj_copy hay không.
-    Cạnh (u, v) là Cầu nếu sau khi xóa (u, v), v không còn đường đi đến u.
+    [CODE KHÓ]: Kiểm tra cạnh (u, v) có phải là CẦU (Bridge) trong đồ thị vô hướng hay không.
+    
+    Định nghĩa Cầu:
+      - Cạnh (u, v) là Cầu nếu sau khi bỏ cạnh (u, v), số thành phần liên thông của đồ thị tăng lên
+        (tức là số đỉnh có thể đi tới từ u bị giảm đi).
+        
+    Thuật toán kiểm tra:
+      1. Đếm số đỉnh tới được từ u bằng BFS trước khi xóa cạnh: count_before.
+      2. Tạm thời loại bỏ cạnh (u, v) khỏi danh sách kề.
+      3. Đếm lại số đỉnh tới được từ u bằng BFS sau khi xóa: count_after.
+      4. Khôi phục lại cạnh (u, v).
+      5. Nếu count_after < count_before -> Cạnh (u, v) là CẦU (Bridge).
     """
-    # Nếu u chỉ còn duy nhất 1 cạnh kề là v thì bắt buộc phải đi (coi như không chặn)
+    # Nếu đỉnh u chỉ còn đúng 1 cạnh kề duy nhất là v, thì bắt buộc phải đi qua nó (không coi là vi phạm)
     if len(adj_copy.get(u, [])) <= 1:
         return False
 
-    # 1. Đếm số đỉnh tới được từ u TRƯỚC KHI xóa cạnh (u, v) (tái sử dụng bfs)
+    # 1. Đếm số đỉnh tới được từ u TRƯỚC KHI xóa cạnh (u, v)
     order_before, _, _ = bfs(adj_copy, n, u, record_trace=False)
     count_before = len(order_before)
 
@@ -121,7 +149,7 @@ def is_bridge(u, v, adj_copy, n):
     adj_copy[u] = [(k, w) for (k, w) in adj_copy[u] if k != v]
     adj_copy[v] = [(k, w) for (k, w) in adj_copy[v] if k != u]
 
-    # 3. Đếm số đỉnh tới được từ u SAU KHI xóa cạnh (u, v) (tái sử dụng bfs)
+    # 3. Đếm số đỉnh tới được từ u SAU KHI xóa cạnh (u, v)
     order_after, _, _ = bfs(adj_copy, n, u, record_trace=False)
     count_after = len(order_after)
 
@@ -129,14 +157,22 @@ def is_bridge(u, v, adj_copy, n):
     adj_copy[u].append((v, 1))
     adj_copy[v].append((u, 1))
 
-    # Nếu số đỉnh tới được sau khi xóa ít hơn -> (u, v) là Cầu (Bridge)
+    # Nếu số lượng đỉnh liên thông bị sụt giảm -> Đây là Cạnh Cầu!
     return count_after < count_before
 
 
 def fleury(adj, n, start=None, directed=False):
     """
     Thuật toán Fleury (Mục 7.1) tìm Chu trình / Đường đi Euler.
-    Nguyên lý: Tuyệt đối không đi qua Cầu (Bridge) trừ khi không còn lựa chọn nào khác.
+    
+    Nguyên lý cốt lõi:
+      - "Không bao giờ đi qua Cầu (Bridge) trừ khi không còn con đường nào khác!"
+      - Tại mỗi đỉnh hiện tại:
+        + Nếu chỉ có 1 cạnh duy nhất -> Bắt buộc đi.
+        + Nếu có nhiều cạnh -> Ưu tiên chọn cạnh KHÔNG phải là Cầu.
+        + Xóa cạnh vừa đi khỏi đồ thị và tiếp tục lặp lại.
+        
+    Độ phức tạp: O(E^2) do mỗi bước kiểm tra Cầu cần duyệt BFS.
     """
     has_euler, is_circuit, default_start, msg = check_eulerian(adj, n, directed)
     if not has_euler:
@@ -145,7 +181,7 @@ def fleury(adj, n, start=None, directed=False):
     if start is None:
         start = default_start
 
-    # Tạo bản sao sâu của danh sách kề
+    # Tạo bản sao danh sách kề để thao tác xóa cạnh dần dần
     adj_copy = {u: list(adj.get(u, [])) for u in range(n)}
 
     curr_node = start
@@ -159,7 +195,6 @@ def fleury(adj, n, start=None, directed=False):
         if not neighbors:
             break
 
-        # Chọn cạnh đi tiếp
         chosen_v = None
         chosen_w = 1
         reason = ""
@@ -168,7 +203,7 @@ def fleury(adj, n, start=None, directed=False):
             chosen_v, chosen_w = neighbors[0]
             reason = "Chỉ còn 1 cạnh duy nhất, bắt buộc đi"
         else:
-            # Ưu tiên chọn cạnh KHÔNG phải là Cầu
+            # Ưu tiên tìm cạnh KHÔNG phải là Cầu (Bridge)
             for v, w in neighbors:
                 if not is_bridge(curr_node, v, adj_copy, n):
                     chosen_v, chosen_w = v, w
@@ -180,7 +215,7 @@ def fleury(adj, n, start=None, directed=False):
                 chosen_v, chosen_w = neighbors[0]
                 reason = "Mọi cạnh còn lại đều là Cầu, bắt buộc phải đi"
 
-        # Xóa cạnh (curr_node, chosen_v) khỏi đồ thị
+        # Xóa cạnh (curr_node, chosen_v) vừa đi qua khỏi đồ thị
         adj_copy[curr_node] = [(k, w) for (k, w) in adj_copy[curr_node] if k != chosen_v]
         if not directed:
             adj_copy[chosen_v] = [(k, w) for (k, w) in adj_copy[chosen_v] if k != curr_node]
@@ -205,7 +240,16 @@ def fleury(adj, n, start=None, directed=False):
 def hierholzer(adj, n, start=None, directed=False):
     """
     Thuật toán Hierholzer (Mục 7.2) tìm Chu trình / Đường đi Euler hiệu năng cao O(E).
-    Nguyên lý: Dùng Stack đi sâu, khi gặp ngõ cụt đưa đỉnh vào kết quả, sau đó đảo ngược.
+    
+    Nguyên lý hoạt động (Kỹ thuật ghép chu trình con):
+      - Sử dụng cấu trúc Ngăn xếp (Stack) lưu đường đi tạm thời `curr_path`.
+      - Từ đỉnh đỉnh stack:
+        + Nếu u còn cạnh kề -> Lấy 1 cạnh kề (u, v), xóa cạnh khỏi đồ thị, đẩy v vào Stack.
+        + Nếu u HẾT CẠNH KỀ (ngõ cụt của một chu trình con) -> Pop u ra khỏi Stack và đẩy vào `circuit`.
+      - Khi Stack rỗng, toàn bộ đồ thị đã được duyệt xong.
+      - ĐẢO NGƯỢC danh sách `circuit` để thu được thứ tự đường đi Euler đúng chuẩn.
+    
+    Độ phức tạp tối ưu: O(E) — Nhanh hơn vượt trội so với Fleury.
     """
     has_euler, is_circuit, default_start, msg = check_eulerian(adj, n, directed)
     if not has_euler:
@@ -217,8 +261,8 @@ def hierholzer(adj, n, start=None, directed=False):
     # Tạo bản sao danh sách kề
     adj_copy = {u: list(adj.get(u, [])) for u in range(n)}
 
-    curr_path = [start]
-    circuit = []
+    curr_path = [start]   # Stack theo dõi lộ trình hiện thời
+    circuit = []          # Danh sách gom kết quả
     trace_table = []
     step = 0
 
@@ -226,11 +270,10 @@ def hierholzer(adj, n, start=None, directed=False):
         u = curr_path[-1]
 
         if adj_copy.get(u, []):
-            # Còn cạnh kề -> Đi tiếp sang đỉnh kề đầu tiên
+            # Còn cạnh kề: Đi tiếp sang đỉnh kề đầu tiên
             v, w = adj_copy[u][0]
 
-            # Xóa cạnh (u, v)
-            # Xóa MỘT cạnh (u, v)
+            # Xóa 1 cạnh (u, v) khỏi đồ thị
             for i, (k, weight) in enumerate(adj_copy[u]):
                 if k == v:
                     adj_copy[u].pop(i)
@@ -251,7 +294,7 @@ def hierholzer(adj, n, start=None, directed=False):
                 "circuit": list(circuit)
             })
         else:
-            # Ngõ cụt -> Lấy đỉnh ra khỏi Stack và đưa vào kết quả
+            # Ngõ cụt: Đỉnh u đã dùng hết cạnh kề -> Đưa u vào kết quả circuit
             dead_end = curr_path.pop()
             circuit.append(dead_end)
             step += 1
@@ -263,7 +306,7 @@ def hierholzer(adj, n, start=None, directed=False):
                 "circuit": list(circuit)
             })
 
-    # Đảo ngược circuit để được thứ tự đúng
+    # Đảo ngược danh sách circuit vì các đỉnh hoàn thành sau được đưa vào trước
     circuit.reverse()
 
     edges_order = []

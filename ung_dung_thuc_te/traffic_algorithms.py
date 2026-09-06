@@ -2,11 +2,10 @@
 """
 Module: ung_dung_thuc_te/traffic_algorithms.py
 Cài đặt 4 Thuật toán Đồ thị CTRR cốt lõi phục vụ Sa bàn Giao thông Đô thị 16 Nút:
-  1. Dijkstra Dynamic Re-routing & Breakpoint Detour
-  2. BFS Concentric Rescue Wave Dispatch (Tô màu phân tầng)
-  3. Tarjan DFS phát hiện Cầu Độc Đạo (Bridges) & Khớp (Cut Vertices)
-  4. Kruskal MST Quy hoạch Mạng Cáp Viễn Thông Đèn Tín Hiệu Thông Minh
-Tái sử dụng trực tiếp các hàm trong core/shortest_path.py, core/traversal.py, core/mst.py.
+  1. Dijkstra Dynamic Re-routing & Breakpoint Detour (Bẻ cua tránh điểm tắc)
+  2. BFS Concentric Rescue Wave Dispatch (Quét sóng cứu hộ đồng tâm phân tầng)
+  3. [CODE KHÓ]: Thuật toán Tarjan DFS tìm Cầu độc đạo (Bridges) & Khớp giao thông (Cut Vertices)
+  4. Kruskal MST Quy hoạch Mạng cáp quang viễn thông cho Đèn tín hiệu giao thông thông minh
 """
 from collections import deque
 from core.shortest_path import dijkstra
@@ -21,14 +20,17 @@ class TrafficAlgorithms:
         self._init_baseline()
 
     def _init_baseline(self):
-        """Khởi tạo lộ trình gốc thông thoáng từ 0 đến 1."""
+        """Khởi tạo lộ trình chuẩn ban đầu khi đường thông thoáng từ nút 0 (PCCC) đến nút 1 (BVĐK)."""
         adj = self.grid.build_adjacency_list(use_dynamic_weight=False)
         res = dijkstra(adj, self.grid.get_num_nodes(), start=0, end=1)
         if res["path"]:
             self._baseline_route_0_1 = list(res["path"])
 
     def compute_ambulance_route(self, start=0, end=1):
-        """Dijkstra tìm đường ngắn nhất có xét đến hệ số kẹt xe thời gian thực."""
+        """
+        Dijkstra tìm đường ngắn nhất có xét đến ma trận trọng số kẹt xe thời gian thực:
+          w(u, v) = length * (1.0 + jam_level * 2.5)
+        """
         adj = self.grid.build_adjacency_list(use_dynamic_weight=True)
         res = dijkstra(adj, self.grid.get_num_nodes(), start=start, end=end)
         
@@ -43,7 +45,7 @@ class TrafficAlgorithms:
             if edge:
                 total_meters += edge.length_meters
 
-        est_minutes = total_meters / 600.0  # Tốc độ trung bình ~36 km/h (600m/phút)
+        est_minutes = total_meters / 600.0  # Tốc độ trung bình khẩn cấp ~36 km/h (600m/phút)
         is_rerouted = False
         if self._baseline_route_0_1 and (start == 0 and end == 1):
             is_rerouted = (path != self._baseline_route_0_1)
@@ -58,7 +60,16 @@ class TrafficAlgorithms:
         }
 
     def compute_reroute_at_breakpoint(self, start=0, end=1, blocked_edge=None):
-        """Yêu cầu 1b: Bẻ cua tại Điểm Gãy (Pivot Node) khi đoạn đường trước mặt bị sự cố."""
+        """
+        [CODE KHÓ]: Bẻ cua tại Điểm Gãy (Pivot Node) khi đoạn đường trước mặt đột ngột bị phong tỏa.
+        
+        Kỹ thuật:
+          1. Lấy lộ trình hiện tại của xe.
+          2. Giả định xe đang tiến tới nút u_break thì đoạn (u_break, v_break) bị chặn.
+          3. Đặt u_break làm "Điểm gãy" (Pivot Node), tạm thời vô hiệu hóa cạnh (u_break, v_break).
+          4. Chạy Dijkstra tính lại đường vòng từ Pivot Node tới Đích.
+          5. Ghép nối đoạn đường xe đã đi qua (từ start đến Pivot) với lộ trình tránh vòng mới.
+        """
         base_res = self.compute_ambulance_route(start, end)
         if not base_res["success"]:
             return {"success": False}
@@ -73,7 +84,7 @@ class TrafficAlgorithms:
         u_break, v_break = blocked_edge
         pivot_node = u_break
 
-        # Tạm thời khóa cạnh blocked_edge
+        # Tạm thời đánh dấu cạnh bị sự cố
         edge_obj = self.grid.get_edge_between(u_break, v_break)
         old_blocked = edge_obj.is_blocked if edge_obj else False
         if edge_obj:
@@ -83,14 +94,14 @@ class TrafficAlgorithms:
         adj = self.grid.build_adjacency_list(use_dynamic_weight=True)
         detour_res = dijkstra(adj, self.grid.get_num_nodes(), start=pivot_node, end=end)
 
-        # Phục hồi trạng thái
+        # Phục hồi trạng thái ban đầu của cạnh
         if edge_obj:
             edge_obj.is_blocked = old_blocked
 
         if not detour_res["path"]:
             return {"success": False}
 
-        # Ghép lộ trình: start -> pivot + detour_path (bỏ đỉnh pivot bị lặp)
+        # Ghép lộ trình: [start -> ... -> pivot] + [pivot -> ... -> end]
         pivot_idx = base_path.index(pivot_node)
         prefix = base_path[:pivot_idx]
         full_path = prefix + detour_res["path"]
@@ -104,7 +115,10 @@ class TrafficAlgorithms:
         }
 
     def compute_rescue_wave_bfs(self, incident_node=2):
-        """Yêu cầu 2: BFS quét sóng đồng tâm từ tâm sự cố và tạo bản đồ phân tầng (levels)."""
+        """
+        BFS quét sóng đồng tâm từ tâm điểm sự cố để lập bản đồ phân tầng (Concentric Layers).
+        Phục vụ trực quan hóa vùng ảnh hưởng và điều phối theo bán kính an toàn.
+        """
         n = self.grid.get_num_nodes()
         adj = self.grid.build_adjacency_list(use_dynamic_weight=False)
 
@@ -146,12 +160,21 @@ class TrafficAlgorithms:
 
     def find_critical_bridges_and_cut_vertices(self, start_node=0):
         """
-        Yêu cầu 3: Thuật toán Tarjan DFS tìm Cầu huyết mạch (Bridges) và Khớp giao thông (Cut Vertices).
-        Sử dụng thời gian khám phá discovery_time và giá trị low[u].
-        Điều kiện Cầu: low[v] > discovery_time[u].
+        [CODE KHÓ]: Thuật toán Tarjan DFS tìm Cầu độc đạo (Bridges) và Khớp giao thông (Cut Vertices).
+        
+        Nguyên lý Toán học Rời rạc:
+          - discovery_time[u]: Thời điểm đầu tiên đỉnh u được thăm trong cây DFS.
+          - low[u]: Thời điểm khám phá nhỏ nhất của các đỉnh mà u (hoặc con cháu của u)
+            có thể vươn tới bằng nhiều nhất 1 cạnh ngược (Back-edge).
+            
+        Điều kiện xác định:
+          1. Cạnh (u, v) là CẦU (Bridge): KHI VÀ CHỈ KHI low[v] > discovery_time[u].
+             (Nghĩa là nhánh con cháu của v không có bất kỳ đường đi tắt nào quay lại u hoặc tổ tiên của u).
+          2. Đỉnh u là KHỚP (Cut Vertex / Khớp giao thông):
+             - Nếu u là gốc cây DFS: u là khớp KHI VÀ CHỈ KHI u có >= 2 nhánh con độc lập.
+             - Nếu u không phải gốc: u là khớp KHI VÀ CHỈ KHI tồn tại con v sao cho low[v] >= discovery_time[u].
         """
         n = self.grid.get_num_nodes()
-        # Xây dựng danh sách kề vô hướng cho phân tích cầu/khớp
         adj = {i: [] for i in range(n)}
         for e in self.grid.edges:
             adj[e.u].append(e.v)
@@ -172,27 +195,34 @@ class TrafficAlgorithms:
 
             for v in adj[u]:
                 if discovery_time[v] == -1:
+                    # v là đỉnh con chưa được thăm trong cây DFS
                     parent[v] = u
                     children += 1
                     dfs_tarjan(v)
+                    
+                    # Cập nhật low[u] theo nhánh con v
                     low[u] = min(low[u], low[v])
 
-                    # Điều kiện Cầu (Bridge)
+                    # [ĐIỀU KIỆN 1]: Kiểm tra Cạnh Cầu (Bridge)
                     if low[v] > discovery_time[u]:
                         bridges.append({
                             "u": u, "v": v,
                             "name": f"Đoạn ({self.grid.nodes[u].code} - {self.grid.nodes[v].code})"
                         })
 
-                    # Điều kiện Khớp (Cut Vertex)
+                    # [ĐIỀU KIỆN 2]: Kiểm tra Khớp giao thông (Cut Vertex)
                     if parent[u] == -1 and children > 1:
+                        # Gốc cây DFS có từ 2 con trở lên
                         cut_vertices.add(u)
                     elif parent[u] != -1 and low[v] >= discovery_time[u]:
+                        # Nút nội bộ không thể đi vòng qua u
                         cut_vertices.add(u)
 
                 elif v != parent[u]:
+                    # Cạnh ngược (Back-edge) nối lên tổ tiên đã thăm
                     low[u] = min(low[u], discovery_time[v])
 
+        # Duyệt toàn bộ đỉnh để phòng đồ thị không liên thông
         for i in range(n):
             if discovery_time[i] == -1:
                 dfs_tarjan(i)
@@ -207,13 +237,16 @@ class TrafficAlgorithms:
         }
 
     def detect_traffic_deadlocks_dfs(self, start_node=2):
-        """Hàm tương thích ngược gọi Tarjan DFS."""
+        """Hàm tương thích ngược gọi Tarjan DFS tìm nút nghẽn."""
         res = self.find_critical_bridges_and_cut_vertices(start_node)
         res["trace_table"] = []
         return res
 
     def plan_smart_signal_mst(self):
-        """Yêu cầu 4: Thuật toán Kruskal (DSU) quy hoạch mạng cáp quang đèn tín hiệu thông minh."""
+        """
+        Quy hoạch Mạng cáp quang đồng bộ đèn tín hiệu giao thông thông minh bằng Kruskal MST.
+        Mục tiêu: Kết nối toàn bộ 16 nút giao thông với tổng chiều dài cáp quang nhỏ nhất.
+        """
         n = self.grid.get_num_nodes()
         all_edges = []
         total_road_meters = 0.0
@@ -222,6 +255,7 @@ class TrafficAlgorithms:
             all_edges.append((e.u, e.v, float(e.length_meters)))
             total_road_meters += e.length_meters
 
+        # Áp dụng Kruskal MST từ core
         mst_edges, total_cable_meters, trace = kruskal(all_edges, n)
         savings = ((total_road_meters - total_cable_meters) / total_road_meters) * 100.0 if total_road_meters > 0 else 0.0
 

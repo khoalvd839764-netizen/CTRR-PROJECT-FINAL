@@ -1,53 +1,76 @@
-# =============================================================================
-# THUẬT TOÁN ĐỒ THỊ HAI PHÍA (BIPARTITE GRAPH)
-# =============================================================================
-# Kiểm tra xem đồ thị có phải Bipartite (2-colorable) hay không.
-# Ứng dụng: Lập trình phân 2 vùng độc lập (Khô/Ướt) để tránh robot kéo giẻ lau ướt lên sàn gỗ.
+# -*- coding: utf-8 -*-
+"""
+Module: core/bipartite.py
+Kiểm tra Đồ thị Hai phía (Bipartite Graph) bằng Thuật toán Tô 2 màu (2-Coloring BFS).
+
+Nguyên lý Toán học Rời rạc:
+  - Định lý König: Một đồ thị là đồ thị hai phía KHI VÀ CHỈ KHI nó KHÔNG chứa chu trình có độ dài lẻ (Odd Cycle).
+  - Nếu đồ thị có thể tô bằng 2 màu (Đỏ = 1, Xanh = -1) sao cho không có 2 đỉnh kề nào cùng màu,
+    đồ thị đó là hai phía. Hai tập đỉnh V1 và V2 tương ứng với hai màu này.
+  - ĐẶC BIỆT (Code khó): Nếu phát hiện 2 đỉnh kề nhau có cùng màu (xung đột màu),
+    thuật toán sử dụng phương pháp tìm Tổ tiên chung gần nhất (LCA - Lowest Common Ancestor)
+    để trích xuất chính xác Chu trình lẻ (Odd Cycle) làm bằng chứng toán học phản bác.
+"""
 
 def check_bipartite(adj, n):
     """
-    Sử dụng BFS để tô màu đỉnh (Coloring).
-    Quy định: 1 (Màu đỏ / Khô), -1 (Màu xanh / Ướt), 0 (Chưa tô).
-    Trả về True nếu chia được 2 tập độc lập (không mâu thuẫn).
-    Nếu False, trả về cả 'chu trình lẻ' (odd cycle) gây ra mâu thuẫn.
+    Kiểm tra đồ thị có phải hai phía hay không bằng phương pháp tô 2 màu (BFS).
+    
+    Quy ước màu:
+      - 0: Đỉnh chưa được xét / chưa tô màu.
+      - 1: Màu Đỏ (Tập V1).
+      - -1: Màu Xanh (Tập V2).
+      
+    Trả về Dict:
+      - Nếu True: {"is_bipartite": True, "v1": [...], "v2": [...], "colors": {node: 'red'/'blue'}}
+      - Nếu False: {"is_bipartite": False, "odd_cycle": [...], "colors": None}
     """
-    color = [0] * n        # Mảng quản lý trạng thái tô màu
-    parent = [-1] * n      # Lưu vết để trích xuất chu trình lẻ khi có lỗi
+    color = [0] * n        # Mảng lưu trạng thái màu của từng đỉnh: 0, 1, hoặc -1
+    parent = [-1] * n      # Mảng lưu đỉnh cha trong cây BFS để phục hồi chu trình lẻ
 
-    # Vòng lặp bên ngoài đảm bảo quét cả các thành phần liên thông rời rạc
+    # Vòng lặp ngoài duyệt từ 0 đến n-1:
+    # Bắt buộc phải có để xử lý các đồ thị không liên thông (gồm nhiều thành phần liên thông rời nhau)
     for start in range(n):
         if color[start] != 0:
             continue
 
-        color[start] = 1   # Chọn màu khởi đầu là 1
+        # Gán màu khởi đầu là 1 cho đỉnh gốc của thành phần liên thông hiện tại
+        color[start] = 1
         queue = [start]
         
         while len(queue) > 0:
             u = queue.pop(0)
 
-            # Duyệt các đỉnh v kề với đỉnh u
+            # Duyệt qua tất cả các đỉnh v kề với u
             for v, *w in adj.get(u, []):
                 if color[v] == 0: 
-                    # Nếu chưa tô màu -> Tô màu ĐỐI NGHỊCH với cha nó (1 -> -1 hoặc -1 -> 1)
+                    # Đỉnh v chưa được tô màu:
+                    # Gán màu NGƯỢC LẠI với đỉnh cha u (nếu u màu 1 thì v màu -1, và ngược lại)
                     color[v] = -color[u]
                     parent[v] = u 
                     queue.append(v)
                 elif color[v] == color[u]:
-                    # PHÁT HIỆN LỖI (Mâu thuẫn màu) -> Đồ thị không phải 2 phía
-                    # Trích xuất chu trình lẻ bằng thuật toán tìm Tổ tiên chung gần nhất (LCA)
+                    # =========================================================================
+                    # PHÁT HIỆN XUNG ĐỘT MÀU! (CODE KHÓ: TRÍCH XUẤT CHU TRÌNH LẺ)
+                    # Hai đỉnh kề nhau u và v lại có CÙNG MÀU -> Chắc chắn tồn tại chu trình lẻ.
+                    # Ta truy ngược từ u và v về gốc cây BFS để tìm Tổ tiên chung gần nhất (LCA).
+                    # =========================================================================
+                    
+                    # Bước A: Lần ngược đường đi từ u về gốc cây BFS
                     path_u = []
                     curr = u
                     while curr != -1:
                         path_u.append(curr)
                         curr = parent[curr]
 
+                    # Bước B: Lần ngược đường đi từ v về gốc cây BFS
                     path_v = []
                     curr = v
                     while curr != -1:
                         path_v.append(curr)
                         curr = parent[curr]
 
-                    # Tìm tổ tiên chung gần nhất (Lowest Common Ancestor - LCA)
+                    # Bước C: Tìm điểm giao nhau đầu tiên giữa 2 đường đi (chính là LCA)
                     lca = -1
                     set_v = set(path_v)
                     for node in path_u:
@@ -55,7 +78,7 @@ def check_bipartite(adj, n):
                             lca = node
                             break
 
-                    # Xây dựng chu trình lẻ hoàn chỉnh
+                    # Bước D: Ghép nhánh từ u lên LCA và nhánh từ LCA xuống v để tạo thành chu trình
                     cycle_u = []
                     for node in path_u:
                         cycle_u.append(node)
@@ -68,6 +91,7 @@ def check_bipartite(adj, n):
                             break
                         cycle_v.append(node)
 
+                    # Chu trình hoàn chỉnh: u -> ... -> LCA -> ... -> v -> u
                     odd_cycle = cycle_u + cycle_v[::-1]
 
                     return {
@@ -76,7 +100,7 @@ def check_bipartite(adj, n):
                         "colors": None
                     }
 
-    # Nếu chạy hết mà không có mâu thuẫn -> Hợp lệ!
+    # Nếu duyệt qua toàn bộ đồ thị mà không phát sinh xung đột màu -> Đồ thị là Hai phía!
     v1 = [i for i in range(n) if color[i] == 1]
     v2 = [i for i in range(n) if color[i] == -1]
 
