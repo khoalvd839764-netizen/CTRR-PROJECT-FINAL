@@ -1,345 +1,156 @@
-# KẾ HOẠCH TRIỂN KHAI DỰ ÁN CTRR FINAL PROJECT
+# 🎓 ĐỒ ÁN MÔN HỌC: CẤU TRÚC RỜI RẠC & LÝ THUYẾT ĐỒ THỊ
+## HỆ THỐNG GIẢI TOÁN ĐỒ THỊ TOÀN DIỆN & MÔ PHỎNG ĐIỀU PHỐI GIAO THÔNG ĐÔ THỊ THÔNG MINH
+> **Trường Đại học Giao thông vận tải TP.HCM (UTH)**  
+> **Khoa Công Nghệ Thông Tin**  
+> **Giảng viên hướng dẫn:** Thầy Tăng Lê Ngọc Gia Huy  
+> **Điểm khởi chạy duy nhất:** `python main.py`
 
 ---
 
-# CÂY THƯ MỤC
+## 🌟 LỜI CẢM ƠN
+Trong suốt quá trình học tập môn Cấu trúc rời rạc, được sự giảng dạy và hướng dẫn tận tình của **thầy Tăng Lê Ngọc Gia Huy**, nhóm chúng em đã tiếp thu được nền tảng kiến thức vững chắc về Lý thuyết đồ thị và hoàn thành xuất sắc đồ án cuối kỳ này.
+
+Nhóm xin chân thành cảm ơn Thầy đã tạo điều kiện thuận lợi, định hướng phương pháp tư duy toán học rời rạc và ứng dụng thực tiễn để nhóm có thể hoàn thiện đề tài một cách trọn vẹn nhất!
+
+---
+
+## 📌 TỔNG QUAN DỰ ÁN
+
+Dự án được xây dựng với mục tiêu kép:
+1. **Bộ công cụ Thuật toán Đồ thị chuẩn mực (Core Library - 100% tự viết, không phụ thuộc networkx):**
+   - Đầy đủ các thuật toán nền tảng: Duyệt đồ thị (BFS, DFS), Kiểm tra đồ thị 2 phía (Bipartite 2-coloring), Tìm đường đi ngắn nhất (Dijkstra, Bellman-Ford với phát hiện chu trình âm), Chu trình Euler (Fleury, Hierholzer), Cây khung nhỏ nhất MST (Prim, Kruskal kèm cấu trúc Disjoint Set Union nén đường đi), Luồng cực đại & Lát cắt hẹp nhất (Ford-Fulkerson / Edmonds-Karp).
+   - Tự động sinh **bảng vết từng bước (trace table)** chi tiết, khớp 100% với phương pháp giải tay trên giấy của sinh viên, kèm trực quan hóa và xuất file ảnh kết quả độ phân giải cao (`matplotlib`).
+2. **Ứng dụng Thực tế Đột phá (Real-world Simulation Engine - Pygame GUI):**
+   - **Sa bàn Mạng lưới Giao thông Đô thị Thông minh (Smart City Traffic Grid):** Sa bàn 16 nút giao trọng điểm, 27 tuyến huyết mạch hai chiều/một chiều.
+   - **Trung tâm Điều phối Cứu hộ Khẩn cấp (Emergency Dispatch):** Tích hợp BFS tìm trạm gần nhất (PCCC, Cấp cứu 115, CSGT) và Dijkstra dẫn đường theo ma trận trọng số kẹt xe thay đổi theo thời gian thực ($W = L \times [1.0 + \text{Jam} \times 2.5]$).
+   - **Đa lộ trình tối ưu:** Sinh đồng thời 1 Tuyến chính (Main Route) + 2 Tuyến dự phòng (Backup Routes) bằng phương pháp phạt trọng số cạnh (Penalty Method).
+
+---
+
+## 📂 CẤU TRÚC THƯ MỤC DỰ ÁN
 
 ```
-CTRR FINAL PROJECT/
-├── core/                    # Thuật toán thuần (100% tự viết)
-│   ├── graph.py             # Class Graph + parser input
-│   ├── converter.py         # 6 hàm chuyển đổi Matrix ↔ List ↔ EdgeList
-│   ├── traversal.py         # BFS, DFS + bảng vết
-│   ├── bipartite.py         # Kiểm tra đồ thị 2 phía
-│   ├── shortest_path.py     # Dijkstra, Bellman-Ford + bảng vết
-│   ├── euler.py             # Fleury, Hierholzer
-│   ├── mst.py               # Prim, Kruskal + class DSU
-│   └── max_flow.py          # Ford-Fulkerson (Edmonds-Karp)
-├── visualizer/
-│   └── draw.py              # Vẽ đồ thị bằng matplotlib, lưu PNG
-├── data/
-│   └── samples.py           # Đồ thị mẫu cho tất cả bài toán
-├── tests/
-├── run_demo.py              # Script chạy demo toàn bộ
-└── requirements.txt         # matplotlib
+CTRR-PROJECT-FINAL/
+│
+├── main.py                     # Điểm khởi chạy duy nhất của toàn bộ dự án
+├── requirements.txt            # Thư viện phụ thuộc (matplotlib, pygame, pytest)
+├── README.md                   # Báo cáo và tài liệu giới thiệu dự án
+│
+├── core/                       # 100% THUẬT TOÁN THUẦN (TỰ CÀI ĐẶT TỪ ĐẦU)
+│   ├── graph.py                # Class Graph: quản lý ma trận kề, DS kề, DS cạnh
+│   ├── converter.py            # 6 hàm chuyển đổi 2 chiều giữa 3 dạng biểu diễn đồ thị
+│   ├── traversal.py            # BFS, DFS (sinh thứ tự duyệt, cây khung & bảng vết)
+│   ├── bipartite.py            # Kiểm tra đồ thị 2 phía (tô 2 màu & trích xuất chu trình lẻ)
+│   ├── shortest_path.py        # Dijkstra & Bellman-Ford (phát hiện chu trình âm, bảng vết)
+│   ├── euler.py                # Fleury & Hierholzer (chu trình & đường đi Euler)
+│   ├── mst.py                  # Prim & Kruskal (kèm class DSU nén đường đi + rank)
+│   └── max_flow.py             # Ford-Fulkerson / Edmonds-Karp (Max Flow & Min-Cut)
+│
+├── visualizer/                 # CÔNG CỤ TRỰC QUAN HÓA & LƯU ẢNH
+│   ├── draw.py                 # Vẽ đồ thị Matplotlib, highlight đường đi, cây khung, lát cắt
+│   └── animation.py            # Trích xuất hoạt ảnh từng bước (GIF)
+│
+├── app/                        # GIAO DIỆN DÒNG LỆNH MENU TƯƠNG TÁC
+│   └── cli.py                  # Menu tương tác 10 chức năng chuẩn đề bài
+│
+├── ung_dung_thuc_te/           # SA BÀN ĐIỀU PHỐI GIAO THÔNG THÔNG MINH (PYGAME GUI)
+│   ├── main.py                 # Giao diện sa bàn đồ họa độ phân giải cao
+│   ├── city_graph.py           # Dữ liệu 16 nút giao, 27 đại lộ, đường 1 chiều/2 chiều
+│   ├── city_data_model.py      # Mô hình trạng thái nút, cạnh, mật độ giao thông
+│   ├── dispatcher.py           # BFS tìm trạm cứu hỏa/cấp cứu gần nhất
+│   ├── router.py               # Dijkstra trọng số kẹt xe động & 3 tuyến đường thay thế
+│   ├── traffic_algorithms.py   # Kruskal phân vùng cứu hộ, Ford-Fulkerson lưu lượng
+│   ├── vehicle.py              # Động lực học xe di chuyển mượt mà trên đồ thị
+│   ├── hud.py                  # Bảng điều khiển, biểu đồ radar, timeline sự cố
+│   └── radial_menu.py          # Menu tròn điều khiển nhanh tại từng nút giao
+│
+├── data/                       # DỮ LIỆU ĐỒ THỊ MẪU
+│   └── samples.py              # Các bộ đồ thị mẫu kinh điển cho từng thuật toán
+│
+├── tests/                      # BỘ KIỂM THỬ TỰ ĐỘNG (UNIT TESTS)
+│   ├── test_foundation.py      # Kiểm thử cấu trúc đồ thị & 6 hàm converter
+│   ├── test_euler.py           # Kiểm thử Fleury & Hierholzer
+│   ├── test_mst.py             # Kiểm thử Prim, Kruskal & DSU
+│   ├── test_max_flow.py        # Kiểm thử Ford-Fulkerson & Min-Cut
+│   ├── test_traffic_sim.py     # Kiểm thử thuật toán sa bàn giao thông
+│   ├── test_emergency_dispatch.py # Kiểm thử BFS Dispatcher & Dijkstra Router
+│   ├── test_robot_storyline.py # Kiểm thử mô hình liên phòng robot hút bụi
+│   └── test_pygame_smoke.py    # Kiểm thử không vỡ giao diện Pygame
+│
+└── results/                    # KẾT QUẢ XUẤT ẢNH & HOẠT ẢNH TỰ ĐỘNG
 ```
 
 ---
 
-# GIAI ĐOẠN 1: CƠ BẢN (Mục 1 - 5)
+## ⚡ 10 CHỨC NĂNG THUẬT TOÁN CỐT LÕI (MENU CHÍNH)
+
+Khi chạy `python main.py`, hệ thống cung cấp Menu tương tác toàn diện:
+
+| Mục | Chức năng | Thuật toán & Đặc tả kỹ thuật |
+| :---: | :--- | :--- |
+| **1** | **Nhập xuất đồ thị** | Hỗ trợ đồ thị vô hướng, có hướng, có trọng số. Nhập từ ma trận, danh sách cạnh hoặc text file. Tự động vẽ và xuất file ảnh PNG. |
+| **2** | **Chuyển đổi biểu diễn** | Chuyển đổi 2 chiều giữa 3 cấu trúc: `Adjacency Matrix` $\leftrightarrow$ `Adjacency List` $\leftrightarrow$ `Edge List`. |
+| **3** | **Duyệt đồ thị (BFS & DFS)** | Duyệt theo thứ tự đỉnh ưu tiên tăng dần, sinh cây khung và bảng vết (trace table) từng bước khớp bài giải tay. |
+| **4** | **Kiểm tra đồ thị 2 phía** | Sử dụng thuật toán tô 2 màu (2-Coloring BFS). Nếu không thỏa mãn, tự động trích xuất chu trình độ dài lẻ (Odd Cycle) để chứng minh. |
+| **5** | **Tìm đường đi ngắn nhất** | **Dijkstra** (trọng số không âm) và **Bellman-Ford** (xử lý trọng số âm, phát hiện chu trình âm). Sinh ma trận bảng vết từng bước lặp. |
+| **6** | **Ứng dụng thực tế** | Khởi chạy Sa bàn Giao thông Đô thị Thông minh & Điều phối Cứu hộ Khẩn cấp thời gian thực (Pygame GUI). |
+| **7.1** | **Chu trình Euler (Fleury)** | Kiểm tra điều kiện Euler, kiểm tra cạnh cầu (Bridge detection) qua DFS, tìm chu trình/đường đi Euler. |
+| **7.2** | **Chu trình Euler (Hierholzer)**| Thuật toán ghép chu trình con tối ưu độ phức tạp $O(E)$, xuất trình tự các bước ghép. |
+| **7.3** | **Cây khung nhỏ nhất (Prim)** | Phát triển cây khung từ 1 đỉnh theo nguyên lý lát cắt (Cut Property), tính tổng trọng số nhỏ nhất. |
+| **7.4** | **Cây khung nhỏ nhất (Kruskal)**| Sắp xếp cạnh tăng dần, kết hợp cấu trúc `Disjoint Set Union (DSU)` có nén đường đi (Path Compression) và gộp theo hạng (Union by Rank). |
+| **7.5** | **Luồng cực đại & Lát cắt hẹp nhất** | Thuật toán **Edmonds-Karp** (BFS tìm đường tăng luồng trên đồ thị phần dư), xác định giá trị Max-Flow và tập đỉnh lát cắt hẹp nhất (Min-Cut $S - T$). |
 
 ---
 
-## FILE `core/graph.py` — Class Graph
+## 🚦 ĐIỂM NHẤN ỨNG DỤNG THỰC TẾ: SA BÀN ĐIỀU PHỐI GIAO THÔNG & CỨU HỘ KHẨN CẤP
 
-> **Phục vụ chức năng**: Mục 1 (Input đồ thị) + Mục 2 (Hiển thị các phương pháp biểu diễn)
->
-> **Mục đích**: Làm đối tượng trung tâm nhận dữ liệu đầu vào và lưu đồ thị dưới cả 3 dạng cùng lúc. Khi người dùng nhập 1 dạng bất kỳ (ma trận / danh sách cạnh / danh sách kề), class tự động tính ra 2 dạng còn lại.
->
-> **Lý do**: Mỗi thuật toán cần dạng biểu diễn khác nhau. BFS/DFS/Dijkstra cần danh sách kề (duyệt đỉnh kề nhanh). Bellman-Ford/Kruskal cần danh sách cạnh (quét toàn bộ cạnh). Ford-Fulkerson cần ma trận kề (truy cập `capacity[u][v]` nhanh). Nếu không có class này, mỗi lần chạy thuật toán phải tự chuyển đổi thủ công.
+Ứng dụng thực tế được thiết kế bám sát 100% kiến thức môn học CTRR với tính chân thực cao:
 
-### `__init__(n, is_directed, is_weighted)`
-- Lưu `self.n`, `self.is_directed`, `self.is_weighted`
-- Khởi tạo 3 dạng rỗng: `adj_matrix`, `adj_list`, `edge_list`
+### 1. Không gian đồ thị $G = (V, E)$:
+- **16 Nút giao trọng điểm:** Trạm PCCC Trung tâm, Bệnh viện Đa khoa, Trung tâm TOC, Bến xe Miền Đông, Ngã tư Hàng Xanh, Sân bay Tân Sơn Nhất, Cảng Cát Lái, Hầm Thủ Thiêm...
+- **27 Tuyến đại lộ:** Bao gồm các trục xuyên tâm, cầu vượt sông và các tuyến đường 1 chiều thực tế (Điện Biên Phủ, Pasteur, Lạc Long Quân...).
 
-### `load_from_matrix(matrix)`
-- Gán `self.adj_matrix = matrix`
-- Gọi `matrix_to_adj_list()` → cập nhật `self.adj_list`
-- Gọi `matrix_to_edge_list()` → cập nhật `self.edge_list`
-
-### `load_from_edge_list(edges, n)`
-- Gán `self.edge_list`
-- Gọi `edge_list_to_matrix()` → cập nhật `self.adj_matrix`
-- Gọi `edge_list_to_adj_list()` → cập nhật `self.adj_list`
-
-### `load_from_text(raw_text)`
-- Tách dòng, đọc dòng đầu: nếu chỉ 1 số → dạng ma trận, ngược lại → dạng danh sách cạnh
-- Gọi `load_from_matrix()` hoặc `load_from_edge_list()` tương ứng
-- **Mục đích**: Cho phép người dùng nhập từ bàn phím hoặc đọc file text đều dùng được cùng 1 hàm này
-
-### `get_all_representations()`
-- Trả về dict chứa cả 3 dạng để hiển thị song song trên màn hình
-- **Mục đích**: Phục vụ Mục 2 — cho người dùng thấy đồng thời cả 3 bảng biểu diễn để so sánh
+### 2. Thuật toán điều phối thời gian thực:
+- **Bước 1 (BFS Dispatcher):** Khi xảy ra sự cố (cháy nổ / tai nạn), thuật toán BFS quét loang từng tầng để xác định ngay trạm cứu hộ/xe cấp cứu có khoảng cách số nút giao ít nhất.
+- **Bước 2 (Dynamic Dijkstra Router):** Tính toán lộ trình nhanh nhất dựa trên trọng số biến thiên theo tình trạng ùn tắc thời gian thực:
+  $$\text{Weight}(u, v) = \text{Length}(u, v) \times (1.0 + \text{JamLevel} \times 2.5)$$
+- **Bước 3 (3 Candidate Routes):** Áp dụng kỹ thuật phạt trọng số cạnh (Penalty Method) để tạo đồng thời **1 Tuyến chính + 2 Tuyến dự phòng độc lập** giúp tài xế linh hoạt chuyển hướng khi gặp sự cố đột xuất.
+- **Bước 4 (Kruskal & Max-Flow):** Ứng dụng Kruskal để thiết lập mạng lưới liên lạc xương sống tối thiểu giữa các trạm khẩn cấp và Max-Flow để đánh giá năng lực giải tỏa giao thông đô thị.
 
 ---
 
-## FILE `core/converter.py` — 6 hàm chuyển đổi
+## 🛠️ HƯỚNG DẪN CÀI ĐẶT & CHẠY CHƯƠNG TRÌNH
 
-> **Phục vụ chức năng**: Mục 2 (Chuyển đổi `adjacency matrix ↔ adjacency list ↔ edge list`)
->
-> **Mục đích**: Đề bài yêu cầu chuyển đổi 2 chiều giữa 3 dạng biểu diễn. File này chứa 6 hàm tương ứng 6 chiều chuyển đổi.
->
-> **Lý do tách riêng file**: `graph.py` gọi các hàm này bên trong. Tách ra để dễ test từng hàm riêng biệt mà không cần tạo cả đối tượng Graph.
+### 1. Yêu cầu môi trường:
+- Python 3.9 trở lên (đã kiểm thử tương thích tốt trên Python 3.10, 3.11, 3.12, 3.13, 3.14).
 
-### `matrix_to_adj_list(matrix, is_directed)`
-- Duyệt 2 vòng lặp `for i` `for j` trên ma trận $n \times n$
-- Nếu `matrix[i][j] != 0` → thêm `(j, matrix[i][j])` vào `adj_list[i]`
-- Trả về dict `{0: [(1, w), (2, w)], 1: [...], ...}`
-- **Ví dụ**: `matrix = [[0,5],[5,0]]` → `{0: [(1, 5)], 1: [(0, 5)]}`
+### 2. Cài đặt thư viện:
+```bash
+pip install -r requirements.txt
+```
 
-### `matrix_to_edge_list(matrix, is_directed)`
-- Nếu **có hướng**: quét toàn bộ `(i, j)`
-- Nếu **vô hướng**: chỉ quét `j >= i` để tránh trùng cạnh (vì $(0,1)$ và $(1,0)$ là 1 cạnh)
-- **Lý do quét nửa trên**: Nếu quét hết sẽ ra cạnh trùng `(0,1,5)` và `(1,0,5)` — sai
+### 3. Khởi chạy chương trình:
+- **Cách 1: Chạy Menu chính (Hỗ trợ toàn bộ 10 chức năng):**
+  ```bash
+  python main.py
+  ```
+- **Cách 2: Chạy trực tiếp Sa bàn Giao thông Đô thị Thông minh (GUI):**
+  ```bash
+  python main.py --gui
+  # hoặc:
+  python main.py --traffic
+  ```
 
-### `edge_list_to_matrix(edge_list, n, is_directed)`
-- Tạo mảng `[[0]*n for _ in range(n)]`
-- Duyệt từng `(u, v, w)`: gán `M[u][v] = w`
-- Nếu vô hướng: gán thêm `M[v][u] = w` (vì cạnh đi được 2 chiều)
-
-### `edge_list_to_adj_list(edge_list, n, is_directed)`
-- Tạo dict rỗng cho n đỉnh
-- Duyệt từng `(u, v, w)`: `adj[u].append((v, w))`
-- Nếu vô hướng: `adj[v].append((u, w))` (vì v cũng kề u)
-
-### `adj_list_to_matrix(adj_list, n)`
-- Tạo mảng `[[0]*n ...]`
-- Quét dict: gán `M[u][v] = w`
-
-### `adj_list_to_edge_list(adj_list, is_directed)`
-- Gom `(u, v, w)` từ dict
-- Nếu vô hướng: chỉ lấy khi `u <= v` (tránh trùng lặp giống `matrix_to_edge_list`)
+### 4. Chạy bộ kiểm thử tự động (Unit Tests):
+```bash
+pytest
+# hoặc:
+python -m pytest -v
+```
+*(Hiện tại 37/37 test cases đều vượt qua thành công 100%).*
 
 ---
 
-## FILE `visualizer/draw.py` — Vẽ đồ thị
-
-> **Phục vụ chức năng**: Mục 1 (Vẽ & Lưu hình đồ thị) + Mục 7 (Trực quan hóa kết quả thuật toán)
->
-> **Mục đích**: Biến dữ liệu số thành hình ảnh trực quan. Đề bài yêu cầu "Vẽ & Lưu hình" và "Trực quan hóa kết quả". Không có hình thì không demo được.
->
-> **Lý do dùng matplotlib**: Đây là thư viện vẽ hình duy nhất được phép dùng theo đề bài ("không sử dụng thư viện có sẵn trừ phần Trực quan hóa").
-
-### `draw_graph(n, edge_list, is_directed, filename, node_colors, highlight_edges, title)`
-- Tính tọa độ đỉnh theo đường tròn: $x = R\cos(2\pi i/n)$, $y = R\sin(2\pi i/n)$
-- **Lý do xếp tròn**: Mọi đỉnh cách đều nhau, không bị đè chồng, dễ nhìn
-- Vẽ cạnh: `plt.plot()` cho vô hướng, `ax.annotate()` với mũi tên cho có hướng
-- Ghi trọng số ở trung điểm cạnh (nếu có trọng số)
-- Vẽ đỉnh: `plt.Circle()` tô màu, ghi số hiệu ở tâm
-- Tham số `highlight_edges`: tô đỏ các cạnh đặc biệt — dùng cho đường đi ngắn nhất, cây khung MST, đường Euler
-- Tham số `node_colors`: tô màu riêng từng đỉnh — dùng cho đồ thị 2 phía (Đỏ/Xanh), min-cut (S/T)
-- `plt.savefig(filename, dpi=300)` lưu file ảnh
-
----
-
-## FILE `core/traversal.py` — BFS & DFS
-
-> **Phục vụ chức năng**: Mục 3 (Duyệt đồ thị từ 1 node bất kỳ bằng BFS & DFS. So với kết quả chạy tay.)
->
-> **Mục đích**: Duyệt qua tất cả đỉnh của đồ thị theo 2 chiến lược khác nhau, xuất ra thứ tự duyệt + cây khung + bảng vết từng bước.
->
-> **Lý do sinh bảng vết (trace_table)**: Đề bài yêu cầu "So với kết quả chạy tay". Bảng vết mô phỏng chính xác từng bước như sinh viên làm bài trên giấy — giúp đối chiếu và chứng minh thuật toán chạy đúng.
-
-### `bfs(adj_list, n, start_node)`
-- **Chức năng**: Duyệt theo chiều rộng — thăm tất cả đỉnh cách nguồn 1 cạnh trước, rồi 2 cạnh, 3 cạnh...
-- Chuẩn bị: `visited = [False]*n`, `parent = [-1]*n`, `queue = [start]`
-- Vòng lặp `while queue`:
-  - `u = queue.pop(0)` (lấy đầu — FIFO)
-  - Quét đỉnh kề $v$ của $u$ (**sorted tăng dần**)
-  - Nếu $v$ chưa thăm → đánh dấu, thêm vào queue, ghi cạnh cây khung
-  - Lưu 1 dòng vào `trace_table`: bước, đỉnh $u$, queue hiện tại, visited, cạnh mới
-- **Lý do sorted tăng dần**: Khi giải tay, sinh viên luôn chọn đỉnh nhỏ trước. Nếu không sort, thứ tự code khác bài giải tay → thầy cô cho sai
-- Trả về `(bfs_order, tree_edges, trace_table)`
-
-### `dfs(adj_list, n, start_node)`
-- **Chức năng**: Duyệt theo chiều sâu — đi sâu nhất có thể rồi mới quay lui
-- Hàm đệ quy `dfs_visit(u)`:
-  - `visited[u] = True`, thêm $u$ vào dfs_order
-  - Quét đỉnh kề $v$ chưa thăm (**sorted tăng dần**) → ghi cạnh → đệ quy `dfs_visit(v)`
-  - Lưu vết: bước, đỉnh $u$, đỉnh cha, visited
-- **Lý do dùng đệ quy thay vì Stack**: Đệ quy cho ra thứ tự duyệt giống cách sinh viên giải tay (đi sâu xong quay lui). Stack có thể cho thứ tự khác.
-- Trả về `(dfs_order, tree_edges, trace_table)`
-
----
-
-## FILE `core/bipartite.py` — Kiểm tra đồ thị 2 phía
-
-> **Phục vụ chức năng**: Mục 4 (Kiểm tra xem đồ thị có là đồ thị hai phía)
->
-> **Mục đích**: Xác định xem có thể chia tập đỉnh thành 2 nhóm sao cho mọi cạnh chỉ nối giữa 2 nhóm khác nhau. Nếu không được thì chỉ ra chu trình lẻ chứng minh.
->
-> **Lý do dùng thuật toán tô 2 màu**: Theo định lý König, đồ thị 2 phía ↔ có thể tô 2 màu ↔ không có chu trình lẻ. Tô màu bằng BFS là cách đơn giản và chính xác nhất.
-
-### `check_bipartite(adj_list, n)`
-- Chuẩn bị: `color = [0]*n` (0: chưa tô, 1: Đỏ, -1: Xanh), `parent = [-1]*n`
-- **Lý do lặp qua tất cả đỉnh**: Đồ thị có thể không liên thông (nhiều mảnh rời), phải kiểm tra từng mảnh
-- Với mỗi đỉnh chưa tô → gán màu 1, BFS:
-  - $v$ chưa tô → `color[v] = -color[u]` (tô màu ngược lại)
-  - $v$ cùng màu $u$ → **xung đột!** → đồ thị KHÔNG phải 2 phía
-    - Lần ngược `parent` từ $u$ và $v$ tìm đỉnh chung → trích xuất chu trình lẻ
-    - **Lý do trích chu trình lẻ**: Để chứng minh cho người dùng thấy tại sao đồ thị không phải 2 phía — có bằng chứng cụ thể
-    - Trả về `{is_bipartite: False, odd_cycle: [...]}`
-- Nếu xong hết → trả về `{is_bipartite: True, set_v1: [...], set_v2: [...]}`
-  - **Lý do trả về 2 tập**: Để vẽ đồ thị 2 phía với 2 màu khác nhau (Đỏ/Xanh) cho trực quan
-
----
-
-## FILE `core/shortest_path.py` — Dijkstra & Bellman-Ford
-
-> **Phục vụ chức năng**: Mục 5 (Tìm đường đi ngắn nhất giữa 2 nodes bất kỳ bằng Dijkstra & Bellman-Ford. So với kết quả chạy tay.)
->
-> **Mục đích**: Tìm đường đi có tổng trọng số nhỏ nhất từ đỉnh nguồn đến đỉnh đích.
->
-> **Lý do cần 2 thuật toán**: Dijkstra nhanh nhưng chỉ đúng khi trọng số ≥ 0. Bellman-Ford chậm hơn nhưng xử lý được trọng số âm và phát hiện chu trình âm. Đề bài yêu cầu cả 2 để so sánh.
-
-### `dijkstra(adj_list, n, start, target)`
-- **Chức năng**: Tìm đường ngắn nhất trên đồ thị trọng số không âm ($w \ge 0$)
-- Chuẩn bị: `dist = [∞]*n`, `visited = [False]*n`, `parent = [-1]*n`, `dist[start] = 0`
-- Lặp n lần:
-  - Tìm đỉnh $u$ chưa thăm có `dist[u]` nhỏ nhất
-  - **Lý do chọn min**: Chiến lược Tham lam — đỉnh gần nhất chắc chắn đã có khoảng cách tối ưu (chỉ đúng khi $w \ge 0$)
-  - Chốt `visited[u] = True`
-  - Quét đỉnh kề $v$: nếu `dist[u] + w < dist[v]` → cập nhật (Relaxation)
-  - Lưu 1 dòng vào `trace_table`: bước, đỉnh chọn, dist hiện tại, parent hiện tại
-  - **Lý do lưu trace**: Đề bài yêu cầu "So với kết quả chạy tay" — sinh bảng ma trận bước lặp giống bài thi
-- Phục hồi đường đi: lần ngược `parent` từ target về start
-- **Lý do cần mảng parent**: dist chỉ cho biết chi phí ngắn nhất, còn parent cho biết đi qua đỉnh nào — cần cả 2 để trả lời đầy đủ
-- Trả về `{dist, parent, path, cost, trace_table}`
-
-### `bellman_ford(edge_list, n, start, is_directed, target)`
-- **Chức năng**: Tìm đường ngắn nhất, xử lý được trọng số âm, phát hiện chu trình âm
-- **Lý do dùng edge_list thay vì adj_list**: Bellman-Ford duyệt toàn bộ cạnh mỗi vòng, dùng danh sách cạnh tiện hơn
-- Chuẩn bị: `dist = [∞]*n`, `dist[start] = 0`, `parent = [-1]*n`
-- Nếu vô hướng: nhân đôi mỗi cạnh thành 2 chiều
-  - **Lý do nhân đôi**: Cạnh vô hướng $(u,v,w)$ nghĩa là đi được cả $u→v$ lẫn $v→u$, cần relax cả 2 chiều
-- Lặp $n-1$ vòng qua toàn bộ cạnh:
-  - Nếu `dist[u] + w < dist[v]` → cập nhật
-  - **Lý do lặp đúng $n-1$ lần**: Đường đi đơn ngắn nhất qua tối đa $n-1$ cạnh. Mỗi vòng lặp đảm bảo tìm được đường tối ưu dài thêm 1 cạnh
-  - Lưu biến thiên `dist` qua từng vòng vào `trace_table`
-  - Dừng sớm nếu không có thay đổi (tối ưu, không bắt buộc)
-- Vòng thứ $n$: quét lại cạnh → nếu còn cập nhật được → `has_negative_cycle = True`
-  - **Lý do thêm vòng thứ n**: Nếu sau $n-1$ vòng mà vẫn giảm được khoảng cách → có chu trình âm (đi vòng vòng mãi chi phí cứ giảm → khoảng cách $= -\infty$)
-- Trả về `{dist, parent, path, cost, has_negative_cycle, trace_table}`
-
----
-
-# GIAI ĐOẠN 2: NÂNG CAO (Mục 7.1 - 7.5)
-
----
-
-## FILE `core/euler.py` — Fleury & Hierholzer
-
-> **Phục vụ chức năng**: Mục 7.1 (Fleury) + Mục 7.2 (Hierholzer)
->
-> **Mục đích**: Tìm chu trình/đường đi Euler — đi qua mỗi cạnh đúng 1 lần.
->
-> **Lý do cần 2 thuật toán**: Fleury dễ hiểu nhưng chậm ($O(E^2)$). Hierholzer nhanh ($O(E)$) nhưng khó hiểu hơn. Đề bài yêu cầu cả 2 để so sánh cách tiếp cận và hiệu năng.
-
-### `fleury(adj_list, n, is_directed)`
-- **Chức năng**: Tìm Euler bằng quy tắc "Không đi qua cầu trừ khi hết đường"
-- Kiểm tra điều kiện Euler: liên thông + đếm đỉnh bậc lẻ = 0 (chu trình) hoặc 2 (đường đi)
-  - **Lý do kiểm tra trước**: Nếu không thỏa điều kiện thì chạy vô ích, phải báo cho người dùng biết
-- Viết hàm con `is_bridge(u, v)`: tạm xóa cạnh $(u,v)$, đếm đỉnh liên thông bằng DFS, so sánh trước/sau
-  - **Lý do cần kiểm tra cầu**: Nếu đi qua cầu khi vẫn còn đường khác → sẽ chia đồ thị thành 2 mảnh → không thể hoàn thành Euler
-- Tại mỗi bước: chọn cạnh không phải cầu (nếu có), xóa cạnh, di chuyển
-- Trả về `(euler_path, steps_log)`
-
-### `hierholzer(adj_list, n, is_directed)`
-- **Chức năng**: Tìm Euler bằng kỹ thuật ghép chu trình con — nhanh gấp nhiều lần Fleury
-- Kiểm tra điều kiện Euler
-- `stack = [start]`, `circuit = []`
-- Khi stack chưa rỗng:
-  - `u = stack[-1]`
-  - Nếu $u$ còn cạnh → lấy cạnh $(u, v)$, xóa, `stack.append(v)`
-  - Nếu hết cạnh → `circuit.append(stack.pop())`
-  - **Lý do dùng 2 danh sách stack + circuit**: stack dùng để đi tìm chu trình con, circuit gom kết quả cuối cùng. Khi đỉnh hết cạnh (= đã hoàn thành 1 chu trình con), đẩy vào circuit
-- Trả về `(circuit[::-1], steps_log)`
-  - **Lý do đảo ngược**: Vì đỉnh được đẩy vào circuit theo thứ tự ngược
-
----
-
-## FILE `core/mst.py` — Prim, Kruskal & DSU
-
-> **Phục vụ chức năng**: Mục 7.3 (Prim) + Mục 7.4 (Kruskal)
->
-> **Mục đích**: Tìm Cây khung nhỏ nhất (MST) — nối tất cả đỉnh lại với nhau sao cho tổng trọng số cạnh nhỏ nhất.
->
-> **Lý do cần 2 thuật toán**: Prim phát triển cây từ 1 đỉnh (giống Dijkstra). Kruskal sắp xếp cạnh rồi chọn lọc (cần DSU). 2 cách tiếp cận khác nhau nhưng cùng kết quả.
-
-### Class `DSU` (Disjoint Set Union)
-- **Chức năng**: Quản lý các nhóm đỉnh riêng biệt, kiểm tra 2 đỉnh có cùng nhóm không
-- **Lý do cần DSU**: Kruskal cần biết nhanh "thêm cạnh $(u,v)$ có tạo chu trình không?" → nếu $u$ và $v$ cùng nhóm → có chu trình → bỏ qua
-- `__init__(n)`: `parent = [0..n-1]` (mỗi đỉnh tự là gốc), `rank = [0]*n`
-- `find(u)`: tìm gốc nhóm chứa $u$, kèm nén đường đi `parent[u] = find(parent[u])`
-  - **Lý do nén đường đi**: Không nén thì cây có thể dài, `find()` chậm. Nén xong `find()` gần như $O(1)$
-- `union(u, v)`: gộp 2 nhóm theo rank
-  - **Lý do gộp theo rank**: Gắn cây thấp vào cây cao, giữ chiều cao cây nhỏ → `find()` nhanh
-
-### `prim(adj_list, n)`
-- **Chức năng**: Xây MST bằng cách mở rộng cây từ 1 đỉnh
-- `in_mst = [False]*n`, `in_mst[0] = True`, `mst_edges = []`
-- Lặp $n-1$ lần: quét tìm cạnh nhẹ nhất $(u, v, w)$ có $u$ trong MST, $v$ ngoài MST
-  - **Lý do chọn cạnh nhẹ nhất cắt giữa trong/ngoài**: Tính chất Cut Property đảm bảo cạnh nhẹ nhất qua lát cắt luôn thuộc MST
-- Kết nạp cạnh, đánh dấu $v$
-- Trả về `(mst_edges, total_weight, steps_log)`
-
-### `kruskal(edge_list, n)`
-- **Chức năng**: Xây MST bằng cách chọn cạnh nhẹ nhất toàn cục mà không tạo chu trình
-- Sắp xếp cạnh theo trọng số tăng dần
-  - **Lý do sắp xếp**: Luôn ưu tiên cạnh nhẹ nhất → đảm bảo MST tối ưu
-- `dsu = DSU(n)`, `mst_edges = []`
-- Duyệt từng cạnh: nếu `dsu.find(u) != dsu.find(v)` → kết nạp, `dsu.union(u, v)`
-  - **Lý do kiểm tra find**: Nếu $u, v$ cùng nhóm → thêm cạnh sẽ tạo chu trình → cây khung không được có chu trình
-- Trả về `(mst_edges, total_weight, steps_log)`
-
----
-
-## FILE `core/max_flow.py` — Ford-Fulkerson (Edmonds-Karp)
-
-> **Phục vụ chức năng**: Mục 7.5 (Ford-Fulkerson)
->
-> **Mục đích**: Tìm lượng luồng cực đại có thể đẩy từ nguồn S đến bồn T trong mạng luồng, và tìm lát cắt hẹp nhất (Min-Cut).
->
-> **Lý do dùng Edmonds-Karp (BFS) thay vì DFS**: BFS đảm bảo tìm đường tăng luồng ngắn nhất → thuật toán chạy tối đa $O(VE^2)$, trong khi DFS có thể chạy rất lâu trên một số đồ thị.
-
-### `ford_fulkerson(capacity, n, source, sink)`
-- **Chức năng**: Tìm luồng cực đại + lát cắt hẹp nhất
-- Khởi tạo `flow = [[0]*n for ...]`
-- Viết hàm con `bfs_find_path()`: BFS trên đồ thị phần dư tìm đường $S → T$
-  - Cung thuận: dung lượng dư = `capacity[u][v] - flow[u][v]`
-  - Cung nghịch: dung lượng dư = `flow[v][u]`
-  - **Lý do cần cung nghịch**: Cho phép "hủy" luồng đã đẩy sai hướng — nếu không có cung nghịch, thuật toán có thể kẹt mà chưa đạt luồng tối ưu
-- Vòng lặp:
-  - Tìm đường tăng luồng bằng BFS
-  - Không tìm được → dừng (đã đạt Max Flow)
-  - Tìm $\Delta$ = min dung lượng dư trên đường
-    - **Lý do lấy min**: Đường đi bị giới hạn bởi cung hẹp nhất (cổ chai)
-  - Cập nhật: `flow[u][v] += Δ`, `flow[v][u] -= Δ`
-  - Lưu vết: đường đi, $\Delta$, flow hiện tại
-- Tìm Min-Cut: BFS từ $S$ trên đồ thị phần dư → tập $S$ = đỉnh tới được, tập $T$ = phần còn lại
-  - **Lý do Min-Cut = Max-Flow**: Đây là Định lý Max-Flow Min-Cut — dung lượng lát cắt hẹp nhất đúng bằng giá trị luồng cực đại
-- Trả về `{max_flow, flow_matrix, min_cut_S, min_cut_T, steps_log}`
-
----
-
-# FILE `data/samples.py` — Đồ thị mẫu
-
-> **Mục đích**: Cung cấp sẵn các đồ thị kinh điển để chạy demo ngay mà không cần gõ tay. Mỗi bộ mẫu được thiết kế riêng cho từng bài toán để kết quả chạy ra có ý nghĩa minh họa.
-
-Các bộ mẫu đã tạo sẵn:
-- `GRAPH_BASIC`: 6 đỉnh vô hướng → cho BFS/DFS
-- `GRAPH_WEIGHTED`: 5 đỉnh có trọng số → cho Dijkstra/Bellman-Ford
-- `GRAPH_BIPARTITE`: Chu trình chẵn $C_4$ → kiểm tra ra True
-- `GRAPH_NOT_BIPARTITE`: Tam giác $C_3$ → kiểm tra ra False
-- `GRAPH_EULER`: Đồ thị mọi đỉnh bậc chẵn → cho Fleury/Hierholzer
-- `GRAPH_MST`: 6 đỉnh có trọng số → cho Prim/Kruskal
-- `GRAPH_FLOW`: Mạng luồng 6 đỉnh (nguồn 0, bồn 5) → cho Ford-Fulkerson
-
----
-
-# FILE `run_demo.py` — Script chạy demo
-
-> **Mục đích**: Chạy 1 lệnh duy nhất `python3 run_demo.py` là thấy toàn bộ kết quả của tất cả thuật toán. Tiện cho lúc demo trước thầy cô.
-
-### `main()`
-- Import tất cả module từ `core/` và `visualizer/`
-- Import đồ thị mẫu từ `data/samples.py`
-- Chạy tuần tự:
-  1. Nạp đồ thị mẫu → in 3 bảng biểu diễn → vẽ & lưu PNG
-  2. Chạy BFS & DFS → in bảng vết
-  3. Kiểm tra Bipartite → in kết quả → vẽ tô 2 màu
-  4. Chạy Dijkstra & Bellman-Ford → in bảng vết → vẽ highlight đường đi
-  5. Chạy Fleury & Hierholzer → in chuỗi Euler → vẽ highlight
-  6. Chạy Prim & Kruskal → in MST → vẽ highlight cây khung
-  7. Chạy Ford-Fulkerson → in luồng & min-cut → vẽ mạng luồng
-# CTRR-PROJECT-FINAL
+## 👥 THÀNH VIÊN NHÓM THỰC HIỆN
+- Sinh viên Khoa Công Nghệ Thông Tin - Trường Đại học Giao thông vận tải TP.HCM (UTH).
+- Đồ án hoàn thành với sự nỗ lực, nghiêm túc và tinh thần đồng đội cao.

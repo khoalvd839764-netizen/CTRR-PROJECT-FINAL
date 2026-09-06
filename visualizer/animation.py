@@ -250,7 +250,8 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
                             color=edge_color,
                             lw=lw,
                             mutation_scale=14,
-                            linestyle=ls
+                            linestyle=ls,
+                            connectionstyle="arc3,rad=0.08"
                         ),
                         zorder=z
                     )
