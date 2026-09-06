@@ -1,0 +1,65 @@
+# import hàm
+from core.converter import (
+    matrix_to_adj, matrix_to_edges,
+    edges_to_matrix, edges_to_adj,
+    adj_to_matrix, adj_to_edges
+)
+
+
+class Graph:
+    # khởi tạo 
+    def __init__(self, n=0, directed=False, weighted=False):
+        self.n = n
+        self.directed = directed
+        self.weighted = weighted
+        self.matrix = [[0] * n for _ in range(n)]
+        self.adj = {i: [] for i in range(n)}
+        self.edges = []
+
+    # tạo matrix
+    def from_matrix(self, matrix):
+        self.n = len(matrix)
+        self.matrix = matrix
+        # gọi hàm đổi qua 2 kiểu còn lại
+        self.adj = matrix_to_adj(matrix, self.directed)
+        self.edges = matrix_to_edges(matrix, self.directed)
+        return self
+
+    # tạo ds cạnh 
+    def from_edges(self, edges, n=None):
+        # tìm số đỉnh để tạo matrix
+        if n is None:
+            max_v = -1
+            for edge in edges:
+                max_v = max(max_v, edge[0], edge[1])
+            self.n = max_v + 1
+        else:
+            self.n = n
+
+        self.edges = edges
+        self.matrix = edges_to_matrix(edges, self.n, self.directed)
+        self.adj = edges_to_adj(edges, self.n, self.directed)
+        return self
+
+    # tạo từ file 
+    def from_text(self, text):
+        # tách từng dòng có kí tự thì giữ k thì bỏ
+        lines = [l.strip() for l in text.strip().split('\n') if l.strip()] 
+        if not lines:
+            return self
+        # tách khoảng trắng
+        first_parts = lines[0].split() 
+        if len(first_parts) == 1 and first_parts[0].isdigit():   # kiểm tra len k và có phải số ko
+            n = int(first_parts[0]) 
+            mat = []
+            for l in lines[1:n + 1]: # bỏ qua n
+                mat.append([float(x) if '.' in x else int(x) for x in l.split()])
+            self.from_matrix(mat)
+        else:
+            edges = []
+            for l in lines:
+                p = l.split()
+                if len(p) >= 2:
+                    edges.append((int(p[0]), int(p[1]), float(p[2]) if len(p) >= 3 else 1))
+            self.from_edges(edges)
+        return self
