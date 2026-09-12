@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Đường đi ngắn nhất: Dijkstra (w >= 0) và Bellman-Ford (w âm, phát hiện chu trình âm). Chi tiết: core/chu_thich_thuat_toan/5_shortest_path.md"""
 
 def dijkstra(adj, n, start, end=None):
-    """Tìm đường đi ngắn nhất bằng Dijkstra (Greedy Choice + Relaxation). Chi tiết: 5_shortest_path.md"""
     dist = [float('inf')] * n
     visited = [False] * n
     parent = [-1] * n
@@ -13,7 +11,6 @@ def dijkstra(adj, n, start, end=None):
         u = -1
         min_dist = float('inf')
         
-        # 1. Lựa chọn tham lam: Tìm đỉnh chưa thăm có khoảng cách nhỏ nhất
         for i in range(n):
             if not visited[i] and dist[i] < min_dist:
                 min_dist = dist[i]
@@ -33,13 +30,11 @@ def dijkstra(adj, n, start, end=None):
         if end is not None and u == end:
             break
 
-        # 2. Nới lỏng cạnh (Relaxation)
         for v, w in adj.get(u, []):
             if not visited[v] and dist[u] + w < dist[v]:
                 dist[v] = dist[u] + w
                 parent[v] = u
 
-    # 3. Truy vết đường đi từ đích về nguồn
     path = None
     if end is not None:
         if dist[end] != float('inf'):
@@ -60,13 +55,11 @@ def dijkstra(adj, n, start, end=None):
 
 
 def bellman_ford(edges, n, start, directed=False, end=None):
-    """Tìm đường ngắn nhất & phát hiện chu trình âm qua n vòng lặp. Chi tiết: 5_shortest_path.md"""
     dist = [float('inf')] * n
     parent = [-1] * n
     dist[start] = 0
     trace = []
 
-    # Chuẩn hóa danh sách cạnh (u, v, w)
     formatted_edges = []
     for e in edges:
         u, v = e[0], e[1]
@@ -75,7 +68,6 @@ def bellman_ford(edges, n, start, directed=False, end=None):
         if not directed:
             formatted_edges.append((v, u, w))
 
-    # 1. Lặp n-1 vòng Relaxation
     for i in range(n - 1):
         changed = False
         for u, v, w in formatted_edges:
@@ -88,14 +80,12 @@ def bellman_ford(edges, n, start, directed=False, end=None):
         if not changed:
             break
 
-    # 2. Vòng thứ n: Phát hiện chu trình âm
     has_neg = False
     for u, v, w in formatted_edges:
         if dist[u] != float('inf') and dist[u] + w < dist[v]:
             has_neg = True
             break
 
-    # 3. Truy vết đường đi
     path = None
     if end is not None and not has_neg:
         if dist[end] != float('inf'):

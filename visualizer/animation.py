@@ -1,10 +1,3 @@
-"""
-Module: visualizer/animation.py
-Trực quan hóa động (Animation) từng bước duyệt đồ thị (DFS / BFS) bằng Matplotlib FuncAnimation.
-Hỗ trợ:
-  - Hiển thị trực tiếp (Live Animation window)
-  - Xuất file ảnh động .GIF (Pillow Writer) để lưu trữ và nộp bài báo cáo.
-"""
 import math
 import os
 import subprocess
@@ -26,9 +19,6 @@ def _open_image_safely(filepath):
 
 
 def _generate_dfs_frames(g, start=0):
-    """
-    Sinh chuỗi các sự kiện từng bước của thuật toán DFS (thăm đỉnh, xét cạnh, quay lui).
-    """
     events = []
     visited = [False] * g.n
     stack = []
@@ -73,7 +63,6 @@ def _generate_dfs_frames(g, start=0):
 
     dfs_recursive(start)
     
-    # Khung hình kết thúc
     events.append({
         "type": "DONE",
         "u": None,
@@ -90,9 +79,6 @@ def _generate_dfs_frames(g, start=0):
 
 
 def _generate_bfs_frames(g, start=0):
-    """
-    Sinh chuỗi các sự kiện từng bước của thuật toán BFS (Hàng đợi Queue, thăm lân cận).
-    """
     events = []
     visited = [False] * g.n
     from collections import deque
@@ -158,10 +144,6 @@ def _generate_bfs_frames(g, start=0):
 
 
 def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval=700, show=False):
-    """
-    Tạo Animation Matplotlib trực quan hóa từng bước duyệt đồ thị (DFS hoặc BFS).
-    Lưu kết quả ra file .GIF động.
-    """
     if filename is None:
         filename = f"{method.lower()}_animation.gif"
     filepath = _resolve_filepath(filename)
@@ -191,7 +173,6 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
         order = event["order"]
         action_text = event["action"]
 
-        # 1. Vẽ tất cả các cạnh cơ sở của đồ thị
         seen_undir = set()
         for u, v, w in g.edges:
             if not g.directed:
@@ -203,7 +184,6 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             x1, y1 = coords[u]
             x2, y2 = coords[v]
 
-            # Kiểm tra xem cạnh có thuộc cây khung duyệt hay đang hoạt động không
             is_active = (active_edge is not None and (
                 (u == active_edge[0] and v == active_edge[1]) or
                 (not g.directed and u == active_edge[1] and v == active_edge[0])
@@ -217,17 +197,17 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
                 dyn_base = 1.2
 
             if is_active:
-                edge_color = "#ff1744"  # Đỏ rực
+                edge_color = "#ff1744"
                 lw = dyn_base * 1.8
                 ls = "-"
                 z = 5
             elif is_in_tree:
-                edge_color = "#00e5ff"  # Xanh ngọc phát sáng
+                edge_color = "#00e5ff"
                 lw = dyn_base * 1.3
                 ls = "-"
                 z = 4
             else:
-                edge_color = "#334155"  # Xám mờ
+                edge_color = "#334155"
                 lw = dyn_base * 0.6
                 ls = "--"
                 z = 2
@@ -258,7 +238,6 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             else:
                 ax.plot([x1, x2], [y1, y2], color=edge_color, lw=lw, linestyle=ls, zorder=z)
 
-        # 2. Vẽ tất cả các đỉnh
         for i in range(g.n):
             x, y = coords[i]
             is_active_node = (i == active_u)
@@ -266,21 +245,21 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             is_visited = visited_nodes[i]
 
             if is_active_node:
-                face_col = "#f59e0b"  # Cam vàng nổi bật
+                face_col = "#f59e0b"
                 edge_col = "#ffffff"
                 glow_r = node_r * 1.3
                 ax.add_patch(plt.Circle((x, y), glow_r, color="#f59e0b", alpha=0.35, zorder=6))
                 lw_node = 2.5
             elif is_in_stack:
-                face_col = "#38bdf8"  # Xanh da trời
+                face_col = "#38bdf8"
                 edge_col = "#ffffff"
                 lw_node = 2.0
             elif is_visited:
-                face_col = "#10b981"  # Xanh lá (Đã duyệt)
+                face_col = "#10b981"
                 edge_col = "#047857"
                 lw_node = 2.0
             else:
-                face_col = "#1e293b"  # Chưa duyệt
+                face_col = "#1e293b"
                 edge_col = "#64748b"
                 lw_node = 1.5
 
@@ -290,13 +269,11 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             text_col = "#0f172a" if (is_active_node or is_in_stack or is_visited) else "#e2e8f0"
             ax.text(x, y, str(i), color=text_col, fontsize=fs_node, fontweight="bold", ha="center", va="center", zorder=8)
 
-        # 3. Tiêu đề & Thông tin tiến trình (HUD)
         ax.set_title(
             f"{title_prefix}\n[Bước {frame_idx + 1}/{len(frames_data)}] — {action_text}",
             fontsize=10.5, fontweight="bold", color="#f8fafc", pad=14
         )
 
-        # 4. Hộp trạng thái ngăn xếp & Thứ tự duyệt
         struct_name = "Ngăn xếp (Stack)" if method.lower() == "dfs" else "Hàng đợi (Queue)"
         status_line_1 = f"• Thứ tự duyệt {method.upper()}: " + (" -> ".join(map(str, order)) if order else "Chưa có")
         status_line_2 = f"• {struct_name}: {stack_or_queue}"
@@ -312,7 +289,6 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
         ax.set_aspect("equal")
         ax.axis("off")
 
-    # Tạo Animation
     anim = animation.FuncAnimation(fig, draw_frame, frames=len(frames_data), interval=interval, repeat=False)
 
     print(f"⏳ Đang dựng và xuất Animation ({len(frames_data)} khung hình)...")

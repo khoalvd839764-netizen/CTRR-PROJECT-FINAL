@@ -8,10 +8,6 @@ DEFAULT_RESULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..
 
 
 def _resolve_filepath(filename):
-    """
-    Tự động chuyển đường dẫn lưu ảnh vào thư mục results/ nếu chưa có thư mục chỉ định.
-    Tự động tạo thư mục nếu chưa tồn tại.
-    """
     if not os.path.isabs(filename):
         dirname = os.path.dirname(filename)
         if not dirname:
@@ -29,7 +25,6 @@ def compute_smart_layout(g_or_n):
     
     n = g_or_n.n if hasattr(g_or_n, 'n') else g_or_n
     
-    # Kích thước cơ bản tùy n
     if n <= 8:
         R_max, node_radius, node_font, weight_font, fig_size = 10, 0.9, 11, 9, (8, 8)
     elif n == 15:
@@ -42,7 +37,6 @@ def compute_smart_layout(g_or_n):
     else:
         R_max, node_radius, node_font, weight_font, fig_size = max(12, n * 0.7), 0.7, 9, 8, (11, 11)
 
-    # ƯU TIÊN 1: Tọa độ tùy biến đính kèm sẵn trong đồ thị (g.pos)
     if hasattr(g_or_n, 'pos') and isinstance(g_or_n.pos, dict) and len(g_or_n.pos) == n:
         xs = [pt[0] for pt in g_or_n.pos.values()]
         ys = [pt[1] for pt in g_or_n.pos.values()]
@@ -51,7 +45,6 @@ def compute_smart_layout(g_or_n):
             R_max = max(R_max, max_coord)
         return dict(g_or_n.pos), R_max, node_radius, node_font, weight_font, fig_size
 
-    # NẾU CÓ DỮ LIỆU ĐỒ THỊ, DÙNG MÔ PHỎNG VẬT LÝ (SPRING LAYOUT) ĐỂ ĐẢM BẢO CẠNH NẶNG -> DÀI, NHẸ -> NGẮN
     if hasattr(g_or_n, 'edges') and len(g_or_n.edges) > 0:
         try:
             import networkx as nx
@@ -59,27 +52,19 @@ def compute_smart_layout(g_or_n):
             for edge in g_or_n.edges:
                 u, v = edge[0], edge[1]
                 w = edge[2] if len(edge) > 2 else 1
-                
-                # Trong spring_layout, lực hút = weight. 
-                # Nếu muốn trọng số lớn (w=6) vẽ dài hơn trọng số nhỏ (w=2), 
-                # ta cần lực hút NHỎ HƠN cho w lớn (Tỷ lệ nghịch).
                 w_val = float(w)
                 inv_w = 1.0 / max(0.1, w_val)
                 G.add_edge(u, v, weight=inv_w)
             
-            # Giữ nguyên các đỉnh mồ côi
             for i in range(n):
                 G.add_node(i)
 
             pos = nx.spring_layout(G, weight='weight', seed=42, iterations=150)
-            
-            # Căn chỉnh lại tọa độ (scale theo R_max)
             coords = {i: (pos[i][0] * R_max, pos[i][1] * R_max) for i in range(n)}
             return coords, R_max, node_radius, node_font, weight_font, fig_size
         except ImportError:
-            pass # Fallback xuống bố cục mặc định nếu không có networkx
+            pass
 
-    # --- FALLBACK: BỐ CỤC MẶC ĐỊNH CHO TỪNG QUY MÔ N ---
     coords = {}
     if n <= 8:
         for i in range(n):
@@ -93,8 +78,6 @@ def compute_smart_layout(g_or_n):
             theta = (2 * math.pi * i) / 5 + (math.pi / 10)
             coords[10 + i] = (8 * math.cos(theta), 8 * math.sin(theta))
     elif n == 20:
-        # Bố cục mạng lưới đa tầng phi đối xứng (Organic Mesh 20 đỉnh)
-        # Tách biệt không gian, loại bỏ hoàn toàn các cạnh đè/xuyên tâm
         coords = {
             0: (-16.0, 5.0),  1: (-16.0, -5.0),
             2: (-10.5, 12.0), 3: (-10.0, 4.0),  4: (-10.0, -4.0),  5: (-10.5, -12.0),
@@ -199,7 +182,6 @@ def draw(g_or_n, edges=None, directed=False, filename="current_graph.png", highl
 
         edge_color = "#E53935" if is_highlighted else "#78909C"
         
-        # Cập nhật: Nét vẽ tuân theo trọng số (Weight-proportional linewidth)
         import math
         try:
             w_val = float(w)
@@ -379,4 +361,3 @@ def draw_max_flow(g, flow_matrix, min_cut_edges, max_flow, source, sink, filenam
     ax.set_ylim(-margin, margin)
     plt.axis("off")
     return _handle_save_and_show(fig, filename, show)
-

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-"""6 hàm chuyển đổi 2 chiều giữa Ma trận, DS kề và DS cạnh. Chi tiết: core/chu_thich_thuat_toan/2_converter.md"""
 
 def matrix_to_adj(matrix, directed=False):
-    """Chuyển đổi Ma trận kề -> Danh sách kề (O(V^2))."""
     n = len(matrix)
     adj = {i: [] for i in range(n)}
     for i in range(n):
@@ -13,7 +11,6 @@ def matrix_to_adj(matrix, directed=False):
 
 
 def matrix_to_edges(matrix, directed=False):
-    """Chuyển đổi Ma trận kề -> Danh sách cạnh (O(V^2)). Vô hướng chỉ quét j >= i."""
     n = len(matrix)
     edges = []
     for i in range(n):
@@ -25,7 +22,6 @@ def matrix_to_edges(matrix, directed=False):
 
 
 def edges_to_matrix(edges, n, directed=False):
-    """Chuyển đổi Danh sách cạnh -> Ma trận kề. Độ phức tạp: O(V^2 + E)."""
     matrix = [[0] * n for _ in range(n)]
     for edge in edges:
         u, v = edge[0], edge[1]
@@ -37,7 +33,6 @@ def edges_to_matrix(edges, n, directed=False):
 
 
 def edges_to_adj(edges, n, directed=False):
-    """Chuyển đổi Danh sách cạnh -> Danh sách kề. Độ phức tạp: O(V + E)."""
     adj = {i: [] for i in range(n)}
     for edge in edges:
         u, v = edge[0], edge[1]
@@ -49,7 +44,6 @@ def edges_to_adj(edges, n, directed=False):
 
 
 def adj_to_matrix(adj, n):
-    """Chuyển đổi Danh sách kề -> Ma trận kề. Độ phức tạp: O(V^2 + E)."""
     matrix = [[0] * n for _ in range(n)]
     for u, neighbors in adj.items():
         for v, weight in neighbors:
@@ -58,7 +52,6 @@ def adj_to_matrix(adj, n):
 
 
 def adj_to_edges(adj, directed=False):
-    """Chuyển đổi Danh sách kề -> Danh sách cạnh (O(V + E)). Vô hướng chỉ lấy u <= v."""
     edges = []
     for u, neighbors in adj.items():
         for v, weight in neighbors:

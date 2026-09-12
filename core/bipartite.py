@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Kiểm tra Đồ thị Hai phía (2-Coloring BFS) & Trích xuất chu trình lẻ. Chi tiết: core/chu_thich_thuat_toan/4_bipartite.md"""
 
 def check_bipartite(adj, n):
-    """Kiểm tra đồ thị hai phía bằng tô 2 màu (1 và -1). Chi tiết: 4_bipartite.md"""
     color = [0] * n
     parent = [-1] * n
-    # Duyệt qua các thành phần liên thông
+
     for start in range(n):
         if color[start] != 0:
             continue
@@ -22,7 +20,6 @@ def check_bipartite(adj, n):
                     parent[v] = u 
                     queue.append(v)
                 elif color[v] == color[u]:
-                    # Xung đột màu: Trích xuất chu trình lẻ thông qua Tổ tiên chung gần nhất (LCA)
                     path_u = []
                     curr = u
                     while curr != -1:
@@ -35,7 +32,6 @@ def check_bipartite(adj, n):
                         path_v.append(curr)
                         curr = parent[curr]
 
-                    # Tìm điểm giao nhau đầu tiên (LCA)
                     lca = -1
                     set_v = set(path_v)
                     for node in path_u:
@@ -55,7 +51,6 @@ def check_bipartite(adj, n):
                             break
                         cycle_v.append(node)
 
-                    # Chu trình lẻ hoàn chỉnh: u -> ... -> LCA -> ... -> v -> u
                     odd_cycle = cycle_u + cycle_v[::-1]
 
                     return {
@@ -64,7 +59,6 @@ def check_bipartite(adj, n):
                         "colors": None
                     }
 
-    # Đồ thị hai phía: phân hoạch 2 tập đỉnh V1, V2
     v1 = [i for i in range(n) if color[i] == 1]
     v2 = [i for i in range(n) if color[i] == -1]
 
