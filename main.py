@@ -12,7 +12,6 @@ Cách sử dụng:
      (hoặc: python main.py --traffic / -t / -g)
 """
 import sys
-import os
 
 def main():
     # Kiểm tra tham số dòng lệnh để phân nhánh thực thi

@@ -1,32 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-Module: core/euler.py
-Cài đặt thuật toán kiểm tra tính Euler, thuật toán Fleury (Mục 7.1)
-và thuật toán Hierholzer (Mục 7.2) tìm Chu trình / Đường đi Euler.
-
-Định lý Euler trong Toán Rời Rạc:
-  1. Đồ thị vô hướng liên thông:
-     - Có Chu trình Euler KHI VÀ CHỈ KHI mọi đỉnh đều có BẬC CHẴN (deg(v) % 2 == 0).
-     - Có Đường đi Euler KHI VÀ CHỈ KHI có ĐÚNG 2 đỉnh bậc lẻ (xuất phát ở 1 đỉnh lẻ và kết thúc ở đỉnh lẻ còn lại).
-  2. Đồ thị có hướng liên thông yếu:
-     - Có Chu trình Euler KHI VÀ CHỈ KHI bán bậc vào = bán bậc ra tại mọi đỉnh (in_deg(v) == out_deg(v)).
-     - Có Đường đi Euler KHI VÀ CHỈ KHI có đúng 1 đỉnh có out_deg = in_deg + 1 (đỉnh bắt đầu),
-       đúng 1 đỉnh có in_deg = out_deg + 1 (đỉnh kết thúc), và mọi đỉnh khác có in_deg == out_deg.
-"""
+"""Chu trình & Đường đi Euler: kiểm tra tính Euler, Fleury và Hierholzer. Chi tiết: core/chu_thich_thuat_toan/6_euler.md"""
 from collections import deque
 from core.traversal import bfs
 
 
 def check_eulerian(adj, n, directed=False):
-    """
-    Kiểm tra điều kiện cần và đủ để tồn tại Chu trình Euler hoặc Đường đi Euler.
-    
-    Trả về Tuple: (has_euler, is_circuit, start_node, message)
-      - has_euler: True nếu tồn tại chu trình hoặc đường đi.
-      - is_circuit: True nếu là Chu trình (bắt đầu và kết thúc cùng 1 đỉnh), False nếu là Đường đi.
-      - start_node: Đỉnh xuất phát hợp lệ.
-      - message: Diễn giải chi tiết lý do toán học.
-    """
+    """Kiểm tra điều kiện cần & đủ Euler (bậc chẵn / bán bậc). Chi tiết: 6_euler.md"""
     if directed:
         # =====================================================================
         # 1. ĐỒ THỊ CÓ HƯỚNG
@@ -124,56 +103,31 @@ def check_eulerian(adj, n, directed=False):
 
 def is_bridge(u, v, adj_copy, n):
     """
-    [CODE KHÓ]: Kiểm tra cạnh (u, v) có phải là CẦU (Bridge) trong đồ thị vô hướng hay không.
-    
-    Định nghĩa Cầu:
-      - Cạnh (u, v) là Cầu nếu sau khi bỏ cạnh (u, v), số thành phần liên thông của đồ thị tăng lên
-        (tức là số đỉnh có thể đi tới từ u bị giảm đi).
-        
-    Thuật toán kiểm tra:
-      1. Đếm số đỉnh tới được từ u bằng BFS trước khi xóa cạnh: count_before.
-      2. Tạm thời loại bỏ cạnh (u, v) khỏi danh sách kề.
-      3. Đếm lại số đỉnh tới được từ u bằng BFS sau khi xóa: count_after.
-      4. Khôi phục lại cạnh (u, v).
-      5. Nếu count_after < count_before -> Cạnh (u, v) là CẦU (Bridge).
+    Kiểm tra cạnh (u, v) có phải là Cầu (Bridge) hay không bằng BFS.
+    Cạnh là Cầu nếu sau khi xóa nó, số đỉnh liên thông tới được từ u bị giảm.
     """
-    # Nếu đỉnh u chỉ còn đúng 1 cạnh kề duy nhất là v, thì bắt buộc phải đi qua nó (không coi là vi phạm)
     if len(adj_copy.get(u, [])) <= 1:
         return False
 
-    # 1. Đếm số đỉnh tới được từ u TRƯỚC KHI xóa cạnh (u, v)
     order_before, _, _ = bfs(adj_copy, n, u, record_trace=False)
     count_before = len(order_before)
 
-    # 2. Tạm thời xóa cạnh (u, v)
+    # Tạm xóa cạnh (u, v)
     adj_copy[u] = [(k, w) for (k, w) in adj_copy[u] if k != v]
     adj_copy[v] = [(k, w) for (k, w) in adj_copy[v] if k != u]
 
-    # 3. Đếm số đỉnh tới được từ u SAU KHI xóa cạnh (u, v)
     order_after, _, _ = bfs(adj_copy, n, u, record_trace=False)
     count_after = len(order_after)
 
-    # 4. Khôi phục lại cạnh (u, v)
+    # Khôi phục lại cạnh (u, v)
     adj_copy[u].append((v, 1))
     adj_copy[v].append((u, 1))
 
-    # Nếu số lượng đỉnh liên thông bị sụt giảm -> Đây là Cạnh Cầu!
     return count_after < count_before
 
 
 def fleury(adj, n, start=None, directed=False):
-    """
-    Thuật toán Fleury (Mục 7.1) tìm Chu trình / Đường đi Euler.
-    
-    Nguyên lý cốt lõi:
-      - "Không bao giờ đi qua Cầu (Bridge) trừ khi không còn con đường nào khác!"
-      - Tại mỗi đỉnh hiện tại:
-        + Nếu chỉ có 1 cạnh duy nhất -> Bắt buộc đi.
-        + Nếu có nhiều cạnh -> Ưu tiên chọn cạnh KHÔNG phải là Cầu.
-        + Xóa cạnh vừa đi khỏi đồ thị và tiếp tục lặp lại.
-        
-    Độ phức tạp: O(E^2) do mỗi bước kiểm tra Cầu cần duyệt BFS.
-    """
+    """Tìm chu trình/đường đi Euler bằng Fleury (tránh cạnh cầu, O(E^2)). Chi tiết: 6_euler.md"""
     has_euler, is_circuit, default_start, msg = check_eulerian(adj, n, directed)
     if not has_euler:
         return [], [], []
@@ -181,9 +135,7 @@ def fleury(adj, n, start=None, directed=False):
     if start is None:
         start = default_start
 
-    # Tạo bản sao danh sách kề để thao tác xóa cạnh dần dần
     adj_copy = {u: list(adj.get(u, [])) for u in range(n)}
-
     curr_node = start
     path = [curr_node]
     edges_order = []
@@ -203,7 +155,7 @@ def fleury(adj, n, start=None, directed=False):
             chosen_v, chosen_w = neighbors[0]
             reason = "Chỉ còn 1 cạnh duy nhất, bắt buộc đi"
         else:
-            # Ưu tiên tìm cạnh KHÔNG phải là Cầu (Bridge)
+            # Ưu tiên chọn cạnh không phải là Cầu
             for v, w in neighbors:
                 if not is_bridge(curr_node, v, adj_copy, n):
                     chosen_v, chosen_w = v, w
@@ -211,11 +163,10 @@ def fleury(adj, n, start=None, directed=False):
                     break
 
             if chosen_v is None:
-                # Nếu tất cả các cạnh còn lại đều là Cầu -> Bắt buộc chọn cạnh đầu tiên
                 chosen_v, chosen_w = neighbors[0]
                 reason = "Mọi cạnh còn lại đều là Cầu, bắt buộc phải đi"
 
-        # Xóa cạnh (curr_node, chosen_v) vừa đi qua khỏi đồ thị
+        # Xóa cạnh vừa duyệt khỏi đồ thị
         adj_copy[curr_node] = [(k, w) for (k, w) in adj_copy[curr_node] if k != chosen_v]
         if not directed:
             adj_copy[chosen_v] = [(k, w) for (k, w) in adj_copy[chosen_v] if k != curr_node]
@@ -238,19 +189,7 @@ def fleury(adj, n, start=None, directed=False):
 
 
 def hierholzer(adj, n, start=None, directed=False):
-    """
-    Thuật toán Hierholzer (Mục 7.2) tìm Chu trình / Đường đi Euler hiệu năng cao O(E).
-    
-    Nguyên lý hoạt động (Kỹ thuật ghép chu trình con):
-      - Sử dụng cấu trúc Ngăn xếp (Stack) lưu đường đi tạm thời `curr_path`.
-      - Từ đỉnh đỉnh stack:
-        + Nếu u còn cạnh kề -> Lấy 1 cạnh kề (u, v), xóa cạnh khỏi đồ thị, đẩy v vào Stack.
-        + Nếu u HẾT CẠNH KỀ (ngõ cụt của một chu trình con) -> Pop u ra khỏi Stack và đẩy vào `circuit`.
-      - Khi Stack rỗng, toàn bộ đồ thị đã được duyệt xong.
-      - ĐẢO NGƯỢC danh sách `circuit` để thu được thứ tự đường đi Euler đúng chuẩn.
-    
-    Độ phức tạp tối ưu: O(E) — Nhanh hơn vượt trội so với Fleury.
-    """
+    """Tìm chu trình/đường đi Euler bằng Hierholzer (ghép chu trình con, O(E)). Chi tiết: 6_euler.md"""
     has_euler, is_circuit, default_start, msg = check_eulerian(adj, n, directed)
     if not has_euler:
         return [], [], []
@@ -258,11 +197,9 @@ def hierholzer(adj, n, start=None, directed=False):
     if start is None:
         start = default_start
 
-    # Tạo bản sao danh sách kề
     adj_copy = {u: list(adj.get(u, [])) for u in range(n)}
-
-    curr_path = [start]   # Stack theo dõi lộ trình hiện thời
-    circuit = []          # Danh sách gom kết quả
+    curr_path = [start]
+    circuit = []
     trace_table = []
     step = 0
 
@@ -270,10 +207,8 @@ def hierholzer(adj, n, start=None, directed=False):
         u = curr_path[-1]
 
         if adj_copy.get(u, []):
-            # Còn cạnh kề: Đi tiếp sang đỉnh kề đầu tiên
+            # Còn cạnh kề: Đi tiếp sang đỉnh kề đầu tiên và xóa cạnh
             v, w = adj_copy[u][0]
-
-            # Xóa 1 cạnh (u, v) khỏi đồ thị
             for i, (k, weight) in enumerate(adj_copy[u]):
                 if k == v:
                     adj_copy[u].pop(i)
@@ -286,7 +221,6 @@ def hierholzer(adj, n, start=None, directed=False):
 
             curr_path.append(v)
             step += 1
-
             trace_table.append({
                 "step": step,
                 "action": f"Đi từ {u} sang {v}",
@@ -294,11 +228,10 @@ def hierholzer(adj, n, start=None, directed=False):
                 "circuit": list(circuit)
             })
         else:
-            # Ngõ cụt: Đỉnh u đã dùng hết cạnh kề -> Đưa u vào kết quả circuit
+            # Ngõ cụt của chu trình con: Pop đỉnh và đưa vào kết quả
             dead_end = curr_path.pop()
             circuit.append(dead_end)
             step += 1
-
             trace_table.append({
                 "step": step,
                 "action": f"Đỉnh {dead_end} hết cạnh -> Đưa vào Circuit",
@@ -306,11 +239,7 @@ def hierholzer(adj, n, start=None, directed=False):
                 "circuit": list(circuit)
             })
 
-    # Đảo ngược danh sách circuit vì các đỉnh hoàn thành sau được đưa vào trước
     circuit.reverse()
-
-    edges_order = []
-    for i in range(len(circuit) - 1):
-        edges_order.append((circuit[i], circuit[i + 1]))
+    edges_order = [(circuit[i], circuit[i + 1]) for i in range(len(circuit) - 1)]
 
     return circuit, edges_order, trace_table

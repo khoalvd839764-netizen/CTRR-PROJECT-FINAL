@@ -36,11 +36,20 @@ def compute_smart_layout(g_or_n):
         R_4max, node_radius, node_font, weight_font, fig_size = 16, 0.85, 10, 8.5, (10, 10)
         R_max = 16
     elif n == 20:
-        R_max, node_radius, node_font, weight_font, fig_size = 19.0, 0.85, 10, 8.5, (12, 12)
+        R_max, node_radius, node_font, weight_font, fig_size = 19.0, 0.85, 10, 8.5, (14, 11)
     elif n == 30:
         R_max, node_radius, node_font, weight_font, fig_size = 22, 0.75, 8.5, 7.5, (13, 13)
     else:
         R_max, node_radius, node_font, weight_font, fig_size = max(12, n * 0.7), 0.7, 9, 8, (11, 11)
+
+    # ƯU TIÊN 1: Tọa độ tùy biến đính kèm sẵn trong đồ thị (g.pos)
+    if hasattr(g_or_n, 'pos') and isinstance(g_or_n.pos, dict) and len(g_or_n.pos) == n:
+        xs = [pt[0] for pt in g_or_n.pos.values()]
+        ys = [pt[1] for pt in g_or_n.pos.values()]
+        if xs and ys:
+            max_coord = max(max(abs(x) for x in xs), max(abs(y) for y in ys))
+            R_max = max(R_max, max_coord)
+        return dict(g_or_n.pos), R_max, node_radius, node_font, weight_font, fig_size
 
     # NẾU CÓ DỮ LIỆU ĐỒ THỊ, DÙNG MÔ PHỎNG VẬT LÝ (SPRING LAYOUT) ĐỂ ĐẢM BẢO CẠNH NẶNG -> DÀI, NHẸ -> NGẮN
     if hasattr(g_or_n, 'edges') and len(g_or_n.edges) > 0:
@@ -68,9 +77,9 @@ def compute_smart_layout(g_or_n):
             coords = {i: (pos[i][0] * R_max, pos[i][1] * R_max) for i in range(n)}
             return coords, R_max, node_radius, node_font, weight_font, fig_size
         except ImportError:
-            pass # Fallback xuống vòng tròn nếu không có networkx
+            pass # Fallback xuống bố cục mặc định nếu không có networkx
 
-    # --- FALLBACK: BỐ CỤC VÒNG TRÒN CỨNG NẾU CHỈ TRUYỀN N ---
+    # --- FALLBACK: BỐ CỤC MẶC ĐỊNH CHO TỪNG QUY MÔ N ---
     coords = {}
     if n <= 8:
         for i in range(n):
@@ -84,15 +93,16 @@ def compute_smart_layout(g_or_n):
             theta = (2 * math.pi * i) / 5 + (math.pi / 10)
             coords[10 + i] = (8 * math.cos(theta), 8 * math.sin(theta))
     elif n == 20:
-        for i in range(10):
-            theta = (2 * math.pi * i) / 10
-            coords[i] = (19.0 * math.cos(theta), 19.0 * math.sin(theta))
-        for j in range(6):
-            theta = (2 * math.pi * j) / 6 + (math.pi / 6)
-            coords[10 + j] = (12.0 * math.cos(theta), 12.0 * math.sin(theta))
-        for k in range(4):
-            theta = (2 * math.pi * k) / 4 + (math.pi / 4)
-            coords[16 + k] = (5.0 * math.cos(theta), 5.0 * math.sin(theta))
+        # Bố cục mạng lưới đa tầng phi đối xứng (Organic Mesh 20 đỉnh)
+        # Tách biệt không gian, loại bỏ hoàn toàn các cạnh đè/xuyên tâm
+        coords = {
+            0: (-16.0, 5.0),  1: (-16.0, -5.0),
+            2: (-10.5, 12.0), 3: (-10.0, 4.0),  4: (-10.0, -4.0),  5: (-10.5, -12.0),
+            6: (-3.5, 14.5),  7: (-3.0, 6.5),   8: (-3.0, -1.5),   9: (-3.0, -8.5),  10: (-3.5, -15.0),
+            11: (4.0, 13.5),  12: (4.0, 5.5),   13: (4.0, -2.5),   14: (4.0, -9.5),  15: (4.0, -15.5),
+            16: (11.0, 9.5),  17: (11.0, 1.0),  18: (11.0, -8.0),
+            19: (17.0, 0.0)
+        }
     elif n == 30:
         for i in range(16):
             theta = (2 * math.pi * i) / 16
@@ -116,6 +126,11 @@ def compute_smart_layout(g_or_n):
                     coords[curr] = (r * math.cos(theta), r * math.sin(theta))
                     curr += 1
                     
+    xs = [pt[0] for pt in coords.values()]
+    ys = [pt[1] for pt in coords.values()]
+    if xs and ys:
+        max_coord = max(max(abs(x) for x in xs), max(abs(y) for y in ys))
+        R_max = max(R_max, max_coord)
     return coords, R_max, node_radius, node_font, weight_font, fig_size
 
 

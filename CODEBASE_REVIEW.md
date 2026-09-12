@@ -126,8 +126,10 @@ Cung cấp 6 hàm chuyển đổi 2 chiều giữa Ma trận kề, Danh sách k�
 
 ### 3.1. `visualizer/draw.py`
 - `compute_smart_layout(g_or_n)`:
-  - Nếu đồ thị có tập cạnh và cài đặt `networkx`, sử dụng Spring Layout với lực hút tỷ lệ nghịch với trọng số cạnh để cạnh trọng số lớn vẽ dài hơn, cạnh nhỏ vẽ ngắn hơn.
-  - Fallback: Bố cục hình tròn đồng tâm (Concentric Circles) nhiều tầng (áp dụng cho đồ thị $N=8, 15, 20, 30$).
+  - Ưu tiên 1: Sử dụng trực tiếp tọa độ tùy biến đính kèm `g.pos` (Dictionary `{node: (x, y)}`).
+  - Ưu tiên 2: Mô phỏng vật lý `spring_layout` (lực đàn hồi theo nghịch đảo trọng số $1/w$).
+  - Bố cục chuyên biệt $N=20$: Mạng lưới đa tầng phi đối xứng (Organic Mesh 20 đỉnh qua 5 cột không gian, đảm bảo 0 cạnh xuyên đỉnh, 0 cạnh trùng đè, các cung có hướng độc lập).
+  - Fallback cho các quy mô khác: Bố cục hình tròn đa tầng phân lớp.
 - `draw(...)`: Vẽ đồ thị tổng quát, làm nổi bật đường đi (highlight), vẽ mũi tên có hướng hoặc đường vô hướng, hỗ trợ độ dày nét vẽ động theo trọng số: $\text{lw} \propto \sqrt{w}$.
 - Các hàm chuyên biệt: `draw_euler` (vẽ số thứ tự bước đi trên từng cạnh), `draw_mst` (vẽ cây khung màu xanh đậm, nét đứt mờ cho cạnh loại bỏ), `draw_max_flow` (vẽ nhãn `flow/capacity`, highlight cạnh bão hòa và lát cắt).
 

@@ -93,12 +93,11 @@ class EmergencyDispatcher:
                             "node_type": nodes[v]["type"]
                         })
 
-                        # [KIỂM TRA ĐIỀU KIỆN 1]: Đỉnh v là Bệnh viện và còn xe cấp cứu sẵn sàng
+                        # Kiểm tra Bệnh viện còn xe sẵn sàng
                         if need_med and found_med is None and nodes[v]["type"] == "HOSPITAL":
                             fleet = nodes[v].get("fleet", 2)
                             busy = nodes[v].get("busy", 0)
                             if busy < fleet:
-                                # Tính đường đi thực tế từ Bệnh viện v đến hiện trường qua Dijkstra
                                 d_res = dijkstra(dyn_adj, n, start=v, end=accident_node_id)
                                 if d_res["path"] and d_res["cost"] < float('inf'):
                                     found_med = {
@@ -111,12 +110,11 @@ class EmergencyDispatcher:
                                     }
                                     stations_found_this_layer.append(found_med)
 
-                        # [KIỂM TRA ĐIỀU KIỆN 2]: Đỉnh v là Trạm PCCC và còn xe cứu hỏa sẵn sàng
+                        # Kiểm tra Trạm PCCC còn xe sẵn sàng
                         if need_fire and found_fire is None and nodes[v]["type"] == "FIRE":
                             fleet = nodes[v].get("fleet", 2)
                             busy = nodes[v].get("busy", 0)
                             if busy < fleet:
-                                # Tính đường đi thực tế từ Trạm Cứu Hỏa v đến hiện trường qua Dijkstra
                                 d_res = dijkstra(dyn_adj, n, start=v, end=accident_node_id)
                                 if d_res["path"] and d_res["cost"] < float('inf'):
                                     found_fire = {

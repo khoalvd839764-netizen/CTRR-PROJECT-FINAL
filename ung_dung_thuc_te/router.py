@@ -46,9 +46,7 @@ class DijkstraRouter:
         step_count = 0
 
         while True:
-            # -----------------------------------------------------------------
-            # 1. TÌM ĐỈNH u* CÓ d[u] NHỎ NHẤT TRONG TẬP CHƯA THĂM (GREEDY CHOICE)
-            # -----------------------------------------------------------------
+            # 1. Lựa chọn tham lam: Tìm đỉnh u* chưa thăm có d[u*] nhỏ nhất
             u_star = -1
             min_dist = float('inf')
             for i in range(n):
@@ -56,17 +54,14 @@ class DijkstraRouter:
                     min_dist = dist[i]
                     u_star = i
 
-            # Nếu không còn đỉnh nào đến được hoặc đồ thị bị chia cắt
             if u_star == -1 or dist[u_star] == float('inf'):
                 break
 
-            # Chốt đỉnh u* (Cố định nhãn khoảng cách vĩnh viễn)
+            # Chốt đỉnh u*
             visited[u_star] = True
             step_count += 1
 
-            # -----------------------------------------------------------------
-            # 2. NỚI LỎNG (RELAXATION) CÁC CẠNH KỀ (u*, v)
-            # -----------------------------------------------------------------
+            # 2. Nới lỏng (Relaxation) các cạnh kề (u*, v)
             relaxations = []
             for v, w in dyn_adj.get(u_star, []):
                 old_d = dist[v]
@@ -103,13 +98,11 @@ class DijkstraRouter:
                 "parent_snapshot": list(parent)
             })
 
-            # Dừng sớm nếu đã chốt xong nhãn tối ưu của đỉnh đích
+            # Dừng sớm nếu đã chốt đỉnh đích
             if u_star == end_node:
                 break
 
-        # ---------------------------------------------------------------------
-        # 3. TRUY VẾT TÌM ĐƯỜNG ĐI (BACKTRACKING)
-        # ---------------------------------------------------------------------
+        # 3. Truy vết đường đi (Backtracking)
         path = None
         cost = None
         if dist[end_node] != float('inf'):
@@ -196,9 +189,7 @@ class DijkstraRouter:
         n = self.city_graph.n
         dyn_adj = self.city_graph.get_dynamic_adj()
 
-        # ---------------------------------------------------------------------
-        # 1. TUYẾN 1: TUYẾN TỐI ƯU TUYỆT ĐỐI (DIJKSTRA CHUẨN)
-        # ---------------------------------------------------------------------
+        # Tuyến 1: Tuyến tối ưu tuyệt đối (Dijkstra thuần)
         res1 = dijkstra(dyn_adj, n, start=start_node, end=end_node)
         if not res1 or not res1.get("path"):
             return []
@@ -288,9 +279,7 @@ class DijkstraRouter:
                 "steps": self._build_route_steps(best_alt1)
             })
 
-        # ---------------------------------------------------------------------
-        # 3. TUYẾN 3: TÌM TUYẾN DỰ PHÒNG THỨ 3 BẰNG CÁCH PHẠT CẢ TUYẾN 1 VÀ 2
-        # ---------------------------------------------------------------------
+        # Tuyến 3: Tuyến dự phòng thứ 2 bằng cách phạt cạnh cả tuyến 1 và 2
         if max_candidates >= 3 and best_alt1:
             best_alt2 = None
             best_alt2_cost = float('inf')

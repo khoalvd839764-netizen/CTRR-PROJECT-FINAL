@@ -15,6 +15,11 @@ from core.mst import prim, kruskal
 from core.max_flow import ford_fulkerson
 from visualizer.draw import draw, draw_euler, draw_mst, draw_max_flow
 from visualizer.animation import animate_dfs, animate_bfs
+from app.trace_formatter import (
+    print_bfs_trace, print_dfs_trace, print_dijkstra_trace,
+    print_fleury_trace, print_hierholzer_trace,
+    print_prim_trace, print_kruskal_trace, print_max_flow_trace
+)
 from data.samples import (
     GRAPH_UNDIRECTED_20, GRAPH_DIRECTED_20,
     GRAPH_BIPARTITE, GRAPH_NOT_BIPARTITE,
@@ -23,7 +28,7 @@ from data.samples import (
 )
 
 
-class App:
+class App: # hàm khởi tạo
     def __init__(self):
         self.graph = None
 
@@ -37,8 +42,8 @@ class App:
     # =========================================================================
     def handle_input_graph(self):
         self.print_header("CHỨC NĂNG 1: INPUT ĐỒ THỊ & VẼ LƯU ẢNH")
-        print("1. 🌟 Đồ thị mẫu 1: VÔ HƯỚNG 20 ĐỈNH (Bố cục 3 tầng đồng tâm - 38 cạnh)")
-        print("2. 🚀 Đồ thị mẫu 2: CÓ HƯỚNG 20 ĐỈNH (Bố cục 3 tầng đô thị - 42 cung)")
+        print("1. 🌟 Đồ thị mẫu 1: VÔ HƯỚNG 20 ĐỈNH (Mạng lưới đa tầng phi đối xứng - 47 cạnh độc lập)")
+        print("2. 🚀 Đồ thị mẫu 2: CÓ HƯỚNG 20 ĐỈNH (Mạng phức hợp đa tuyến - 46 cung độc lập)")
         print("3. 🏠 Đồ thị mẫu 3: Đồ thị Ngôi nhà 5 đỉnh (Test Euler)")
         print("4. 🌲 Đồ thị mẫu 4: Đồ thị 6 đỉnh có trọng số (Test MST)")
         print("5. 🌊 Đồ thị mẫu 5: Mạng luồng 6 đỉnh S=0 -> T=5 (Test Max Flow)")
@@ -49,12 +54,12 @@ class App:
         
         if choice == '1':
             self.graph = Graph(directed=GRAPH_UNDIRECTED_20["directed"]).from_edges(
-                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"]
+                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"], pos=GRAPH_UNDIRECTED_20.get("pos")
             )
             print("✅ Đã nạp ĐỒ THỊ VÔ HƯỚNG 20 ĐỈNH thành công!")
         elif choice == '2':
             self.graph = Graph(directed=GRAPH_DIRECTED_20["directed"]).from_edges(
-                GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"]
+                GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"], pos=GRAPH_DIRECTED_20.get("pos")
             )
             print("✅ Đã nạp ĐỒ THỊ CÓ HƯỚNG 20 ĐỈNH thành công!")
         elif choice == '3':
@@ -146,12 +151,7 @@ class App:
             print(f"\n🌊 KẾT QUẢ DUYỆT BFS TỪ ĐỈNH {start}:")
             print("   • Thứ tự duyệt :", " -> ".join(map(str, bfs_order)))
             print(f"   • Cây khung BFS ({len(bfs_tree)} cạnh):", bfs_tree)
-            
-            print("\n📊 BẢNG VẾT TỪNG BƯỚC BFS (ĐỐI CHIẾU GIẢI TAY):")
-            print(f"{'Bước':<6} | {'Đỉnh u':<8} | {'Hàng đợi (Queue)':<35} | {'Mảng Visited'}")
-            print("-" * 75)
-            for row in bfs_trace:
-                print(f"{row['step']:<6} | {row['u']:<8} | {str(row['queue']):<35} | {row['visited']}")
+            print_bfs_trace(bfs_trace)
 
             filename = "traversal_bfs_tree.png"
             saved_path = draw(self.graph, filename=filename, highlight=bfs_tree)
@@ -162,12 +162,7 @@ class App:
             print(f"\n🌲 KẾT QUẢ DUYỆT DFS TỪ ĐỈNH {start}:")
             print("   • Thứ tự duyệt :", " -> ".join(map(str, dfs_order)))
             print(f"   • Cây khung DFS ({len(dfs_tree)} cạnh):", dfs_tree)
-
-            print("\n📊 BẢNG VẾT TỪNG BƯỚC DFS (ĐỐI CHIẾU GIẢI TAY):")
-            print(f"{'Bước':<6} | {'Đỉnh u':<8} | {'Mảng Visited'}")
-            print("-" * 55)
-            for row in dfs_trace:
-                print(f"{row['step']:<6} | {row['u']:<8} | {row['visited']}")
+            print_dfs_trace(dfs_trace)
 
             filename = "traversal_dfs_tree.png"
             saved_path = draw(self.graph, filename=filename, highlight=dfs_tree)
@@ -256,14 +251,9 @@ class App:
             print(f"\n⚡ KẾT QUẢ THUẬT TOÁN DIJKSTRA ({start} -> {end}):")
             print(f"   • Chi phí ngắn nhất : {d_res['cost']}")
             print(f"   • Lộ trình đường đi : {' -> '.join(map(str, d_res['path'])) if d_res['path'] else 'Không có đường đi'}")
-            
-            print("\n📊 BẢNG MA TRẬN BƯỚC LẶP DIJKSTRA (ĐỐI CHIẾU GIẢI TAY):")
-            print(f"{'Bước':<6} | {'Đỉnh chốt':<10} | {'Mảng khoảng cách dist'}")
-            print("-" * 65)
-            for row in d_res["trace"]:
-                print(f"{row['step']:<6} | {str(row['u']):<10} | {row['dist']}")
+            print_dijkstra_trace(d_res["trace"])
 
-            if d_res["path"]:
+            if d_res ["path"]:
                 p = d_res["path"]
                 hl_path = [(p[i], p[i + 1]) for i in range(len(p) - 1)]
                 saved_path = draw(self.graph, filename="shortest_path_dijkstra.png", highlight=hl_path)
@@ -322,12 +312,7 @@ class App:
             print(f"\n🎯 KẾT QUẢ FLEURY ({'Chu trình' if is_circ else 'Đường đi'} Euler):")
             print("   • Thứ tự đỉnh :", " -> ".join(map(str, path)))
             print("   • Thứ tự cạnh :", edges_order)
-            
-            print("\n📊 BẢNG VẾT TỪNG BƯỚC FLEURY:")
-            print(f"{'Bước':<6} | {'Cạnh chọn':<12} | {'Lý do chọn'}")
-            print("-" * 55)
-            for r in trace:
-                print(f"{r['step']:<6} | ({r['u']} -> {r['v']}){'':<4} | {r['reason']}")
+            print_fleury_trace(trace)
 
             filename = "euler_fleury_result.png"
             saved_path = draw_euler(g_euler, path, edges_order, filename=filename)
@@ -338,12 +323,7 @@ class App:
             print(f"\n🎯 KẾT QUẢ HIERHOLZER ({'Chu trình' if is_circ else 'Đường đi'} Euler):")
             print("   • Thứ tự đỉnh :", " -> ".join(map(str, path)))
             print("   • Thứ tự cạnh :", edges_order)
-
-            print("\n📊 BẢNG VẾT TỪNG BƯỚC HIERHOLZER:")
-            print(f"{'Bước':<6} | {'Hành động':<40} | {'Ngăn xếp Stack'}")
-            print("-" * 75)
-            for r in trace:
-                print(f"{r['step']:<6} | {r['action']:<40} | {r['stack']}")
+            print_hierholzer_trace(trace)
 
             filename = "euler_hierholzer_result.png"
             saved_path = draw_euler(g_euler, path, edges_order, filename=filename)
@@ -383,12 +363,7 @@ class App:
             print(f"\n🌲 KẾT QUẢ THUẬT TOÁN PRIM (MST TỪ ĐỈNH {start}):")
             print(f"   • Tổng trọng số cây khung : {total_w}")
             print(f"   • Danh sách {len(mst_edges)} cạnh cây khung : {mst_edges}")
-
-            print("\n📊 BẢNG VẾT TỪNG BƯỚC KẾT NẠP CẠNH PRIM:")
-            print(f"{'Bước':<6} | {'Cạnh kết nạp':<15} | {'Trọng số w':<12} | {'Tổng cạnh MST'}")
-            print("-" * 55)
-            for i, r in enumerate(trace, 1):
-                print(f"{i:<6} | {str(r['edge']):<15} | {r['weight']:<12} | {r['current_mst_edges']}")
+            print_prim_trace(trace)
 
             filename = "mst_prim_result.png"
             saved_path = draw_mst(g_mst, mst_edges, total_w, filename=filename)
@@ -399,12 +374,7 @@ class App:
             print(f"\n🌲 KẾT QUẢ THUẬT TOÁN KRUSKAL (DSU UNION-FIND):")
             print(f"   • Tổng trọng số cây khung : {total_w}")
             print(f"   • Danh sách {len(mst_edges)} cạnh cây khung : {mst_edges}")
-
-            print("\n📊 BẢNG VẾT XÉT CẠNH KRUSKAL (ĐỐI CHIẾU GIẢI TAY):")
-            print(f"{'Cạnh xét':<15} | {'Trọng số w':<12} | {'Hành động':<25}")
-            print("-" * 55)
-            for r in trace:
-                print(f"{str(r['edge']):<15} | {r['weight']:<12} | {r['action']}")
+            print_kruskal_trace(trace)
 
             filename = "mst_kruskal_result.png"
             saved_path = draw_mst(g_mst, mst_edges, total_w, filename=filename)
@@ -427,7 +397,9 @@ class App:
             source = GRAPH_MAX_FLOW_6["source"]
             sink = GRAPH_MAX_FLOW_6["sink"]
         elif c == '2':
-            g_flow = Graph(directed=True).from_edges(GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"])
+            g_flow = Graph(directed=True).from_edges(
+                GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"], pos=GRAPH_DIRECTED_20.get("pos")
+            )
             source = 0
             sink = 19
         else:
@@ -451,13 +423,7 @@ class App:
         print(f"     + Tập T (Đích)          : {sorted(list(T_set))}")
         print(f"   • Danh sách các cung thuộc Lát cắt hẹp nhất (Min Cut): {min_cut}")
         print(f"   • Tổng dung lượng Lát cắt Min Cut = {sum(cap for _, _, cap in min_cut)} (khớp với Max Flow = {max_f})")
-
-        print("\n📊 BẢNG VẾT TỪNG BƯỚC TĂNG LUỒNG (AUGMENTING PATHS):")
-        print(f"{'Bước':<6} | {'Đường tăng luồng':<30} | {'Độ nghẽn (Δf)':<15} | {'Tổng luồng Max Flow'}")
-        print("-" * 75)
-        for r in trace:
-            path_str = " -> ".join(map(str, r['path']))
-            print(f"{r['step']:<6} | {path_str:<30} | {r['bottleneck']:<15} | {r['current_max_flow']}")
+        print_max_flow_trace(trace)
 
         filename = "max_flow_result.png"
         saved_path = draw_max_flow(g_flow, flow_mat, min_cut, max_f, source, sink, filename=filename)
@@ -471,7 +437,7 @@ class App:
         
         # 1. Đồ thị 20 đỉnh
         g20 = Graph(directed=GRAPH_UNDIRECTED_20["directed"]).from_edges(
-            GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"]
+            GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"], pos=GRAPH_UNDIRECTED_20.get("pos")
         )
         print("\n[PHẦN CƠ BẢN] ĐỒ THỊ 20 ĐỈNH:")
         bfs_ord, bfs_tree, _ = bfs(g20.adj, g20.n, 0)
