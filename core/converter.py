@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+Module: core/converter.py
+Mục đích: Cung cấp các hàm chuyển đổi linh hoạt qua lại giữa 3 cấu trúc biểu diễn đồ thị:
+  1. Ma trận kề (Adjacency Matrix): Ma trận n x n, matrix[i][j] = trọng số w (0 nếu không có cạnh).
+  2. Danh sách kề (Adjacency List): Dict {u: [(v, w), ...]}.
+  3. Danh sách cạnh (Edge List): List các tuple [(u, v, w), ...].
+Hỗ trợ cả đồ thị có hướng (directed=True) và vô hướng (directed=False).
+"""
 
 def matrix_to_adj(matrix, directed=False):
+    """
+    Chuyển đổi từ Ma trận kề (Matrix) sang Danh sách kề (Adjacency List).
+    """
     n = len(matrix)
     adj = {i: [] for i in range(n)}
     for i in range(n):
@@ -11,6 +22,10 @@ def matrix_to_adj(matrix, directed=False):
 
 
 def matrix_to_edges(matrix, directed=False):
+    """
+    Chuyển đổi từ Ma trận kề (Matrix) sang Danh sách cạnh (Edge List).
+    Nếu là vô hướng (directed=False), chỉ duyệt nửa trên ma trận (j >= i) để tránh trùng lặp cạnh.
+    """
     n = len(matrix)
     edges = []
     for i in range(n):
@@ -22,6 +37,10 @@ def matrix_to_edges(matrix, directed=False):
 
 
 def edges_to_matrix(edges, n, directed=False):
+    """
+    Chuyển đổi từ Danh sách cạnh (Edge List) sang Ma trận kề (Matrix) kích thước n x n.
+    Nếu vô hướng, gán đối xứng cả matrix[u][v] và matrix[v][u].
+    """
     matrix = [[0] * n for _ in range(n)]
     for edge in edges:
         u, v = edge[0], edge[1]
@@ -33,6 +52,9 @@ def edges_to_matrix(edges, n, directed=False):
 
 
 def edges_to_adj(edges, n, directed=False):
+    """
+    Chuyển đổi từ Danh sách cạnh (Edge List) sang Danh sách kề (Adjacency List).
+    """
     adj = {i: [] for i in range(n)}
     for edge in edges:
         u, v = edge[0], edge[1]
@@ -44,6 +66,9 @@ def edges_to_adj(edges, n, directed=False):
 
 
 def adj_to_matrix(adj, n):
+    """
+    Chuyển đổi từ Danh sách kề (Adjacency List) sang Ma trận kề (Matrix) n x n.
+    """
     matrix = [[0] * n for _ in range(n)]
     for u, neighbors in adj.items():
         for v, weight in neighbors:
@@ -52,6 +77,9 @@ def adj_to_matrix(adj, n):
 
 
 def adj_to_edges(adj, directed=False):
+    """
+    Chuyển đổi từ Danh sách kề (Adjacency List) sang Danh sách cạnh (Edge List).
+    """
     edges = []
     for u, neighbors in adj.items():
         for v, weight in neighbors:
