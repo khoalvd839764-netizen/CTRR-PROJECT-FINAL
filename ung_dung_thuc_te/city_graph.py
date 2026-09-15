@@ -93,3 +93,38 @@ class CityTrafficGraph:
                 return edge[2]
         return 0
 
+    def fluctuate_traffic_near_node(self, node_id, chance_next_jam=0.45, next_node=None):
+        """Mô phỏng biến động giao thông xung quanh nút giao khi xe đi qua."""
+        import random
+        events = []
+        
+        if next_node is not None:
+            for edge in self.raw_edges:
+                u, v = edge[0], edge[1]
+                if (u == node_id and v == next_node) or (not edge[3] and v == node_id and u == next_node):
+                    if random.random() < chance_next_jam:
+                        self.congestion[(u, v)] = 3.5
+                        if not edge[3]:
+                            self.congestion[(v, u)] = 3.5
+                        events.append((u, v, 3.5, True, edge[4]))
+                    break
+
+        for edge in self.raw_edges:
+            u, v = edge[0], edge[1]
+            if (u == node_id or v == node_id) and (next_node is None or not ((u == node_id and v == next_node) or (v == node_id and u == next_node))):
+                rnd = random.random()
+                if rnd < 0.20:
+                    new_val = 3.0
+                    self.congestion[(u, v)] = new_val
+                    if not edge[3]:
+                        self.congestion[(v, u)] = new_val
+                    events.append((u, v, new_val, False, edge[4]))
+                elif rnd < 0.40:
+                    new_val = 1.0
+                    self.congestion[(u, v)] = new_val
+                    if not edge[3]:
+                        self.congestion[(v, u)] = new_val
+                    events.append((u, v, new_val, False, edge[4]))
+
+        return events
+

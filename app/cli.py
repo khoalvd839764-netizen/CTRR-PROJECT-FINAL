@@ -7,7 +7,7 @@ import os
 import sys
 
 from core.graph import Graph
-from core.traversal import bfs, dfs
+from core.traversal import bfs, dfs, bfs_path, dfs_path
 from core.bipartite import check_bipartite
 from core.shortest_path import dijkstra, bellman_ford
 from core.euler import check_eulerian, fleury, hierholzer
@@ -22,15 +22,49 @@ from app.trace_formatter import (
 )
 from data.samples import (
     GRAPH_UNDIRECTED_20, GRAPH_DIRECTED_20,
-    GRAPH_BIPARTITE, GRAPH_NOT_BIPARTITE,
-    GRAPH_EULER_HOUSE, GRAPH_EULER_CIRCUIT,
-    GRAPH_MST_6, GRAPH_MAX_FLOW_6
+    GRAPH_BIPARTITE_15, GRAPH_EULER_15
 )
 
 
 class App: # hàm khởi tạo
     def __init__(self):
         self.graph = None
+
+    def _parse_node_input(self, prompt, default=0):
+        val_str = input(prompt).strip()
+        if not val_str:
+            return default
+        if self.graph and getattr(self.graph, "labels", None):
+            rev_map = {str(v).lower(): k for k, v in self.graph.labels.items()}
+            if val_str.lower() in rev_map:
+                return rev_map[val_str.lower()]
+        try:
+            return int(val_str)
+        except ValueError:
+            return default
+
+    def _parse_optional_node_input(self, prompt):
+        val_str = input(prompt).strip()
+        if not val_str:
+            return None
+        if self.graph and getattr(self.graph, "labels", None):
+            rev_map = {str(v).lower(): k for k, v in self.graph.labels.items()}
+            if val_str.lower() in rev_map:
+                return rev_map[val_str.lower()]
+        try:
+            return int(val_str)
+        except ValueError:
+            return None
+
+    def _format_node(self, u):
+        if self.graph and getattr(self.graph, "labels", None):
+            lbl = self.graph.labels.get(u)
+            if lbl is not None and lbl != str(u):
+                return f"{lbl}({u})"
+        return str(u)
+
+    def _format_path(self, path):
+        return " -> ".join(self._format_node(u) for u in path)
 
     def print_header(self, title):
         print("\n" + "=" * 70)
@@ -42,15 +76,14 @@ class App: # hàm khởi tạo
     # =========================================================================
     def handle_input_graph(self):
         self.print_header("CHỨC NĂNG 1: INPUT ĐỒ THỊ & VẼ LƯU ẢNH")
-        print("1. 🌟 Đồ thị mẫu 1: VÔ HƯỚNG 20 ĐỈNH (Mạng lưới đa tầng phi đối xứng - 47 cạnh độc lập)")
-        print("2. 🚀 Đồ thị mẫu 2: CÓ HƯỚNG 20 ĐỈNH (Mạng phức hợp đa tuyến - 46 cung độc lập)")
-        print("3. 🏠 Đồ thị mẫu 3: Đồ thị Ngôi nhà 5 đỉnh (Test Euler)")
-        print("4. 🌲 Đồ thị mẫu 4: Đồ thị 6 đỉnh có trọng số (Test MST)")
-        print("5. 🌊 Đồ thị mẫu 5: Mạng luồng 6 đỉnh S=0 -> T=5 (Test Max Flow)")
-        print("6. Tự nhập đồ thị từ bàn phím (Danh sách cạnh: u v [w])")
-        print("7. Tự nhập đồ thị từ bàn phím (Ma trận kề)")
+        print("1. 🌟 Đồ thị mẫu 1: VÔ HƯỚNG 20 ĐỈNH (Mạng lưới đa tầng phi đối xứng - 47 cạnh)")
+        print("2. 🚀 Đồ thị mẫu 2: CÓ HƯỚNG 20 ĐỈNH (Mạng phức hợp đa tuyến - 46 cung)")
+        print("3. ⚖️  Đồ thị mẫu 3: ĐỒ THỊ 2 PHÍA 15 ĐỈNH (Test Bipartite - 25 cạnh liên thông)")
+        print("4. 🔄 Đồ thị mẫu 4: ĐỒ THỊ EULER 15 ĐỈNH (Test Euler - 4-regular 30 cạnh)")
+        print("5. Tự nhập đồ thị từ bàn phím (Danh sách cạnh: u v [w])")
+        print("6. Tự nhập đồ thị từ bàn phím (Ma trận kề)")
         
-        choice = input("👉 Chọn cách nhập (1-7): ").strip()
+        choice = input("👉 Chọn cách nhập (1-6): ").strip()
         
         if choice == '1':
             self.graph = Graph(directed=GRAPH_UNDIRECTED_20["directed"]).from_edges(
@@ -63,22 +96,18 @@ class App: # hàm khởi tạo
             )
             print("✅ Đã nạp ĐỒ THỊ CÓ HƯỚNG 20 ĐỈNH thành công!")
         elif choice == '3':
-            self.graph = Graph(directed=GRAPH_EULER_HOUSE["directed"]).from_edges(
-                GRAPH_EULER_HOUSE["edges"], n=GRAPH_EULER_HOUSE["n"]
+            self.graph = Graph(directed=GRAPH_BIPARTITE_15["directed"]).from_edges(
+                GRAPH_BIPARTITE_15["edges"], n=GRAPH_BIPARTITE_15["n"], pos=GRAPH_BIPARTITE_15.get("pos")
             )
-            print("✅ Đã nạp ĐỒ THỊ NGÔI NHÀ 5 ĐỈNH thành công!")
+            print("✅ Đã nạp ĐỒ THỊ 2 PHÍA 15 ĐỈNH thành công!")
         elif choice == '4':
-            self.graph = Graph(directed=GRAPH_MST_6["directed"]).from_edges(
-                GRAPH_MST_6["edges"], n=GRAPH_MST_6["n"]
+            self.graph = Graph(directed=GRAPH_EULER_15["directed"]).from_edges(
+                GRAPH_EULER_15["edges"], n=GRAPH_EULER_15["n"], pos=GRAPH_EULER_15.get("pos")
             )
-            print("✅ Đã nạp ĐỒ THỊ 6 ĐỈNH TRỌNG SỐ (MST) thành công!")
+            print("✅ Đã nạp ĐỒ THỊ EULER 15 ĐỈNH thành công!")
         elif choice == '5':
-            self.graph = Graph(directed=GRAPH_MAX_FLOW_6["directed"]).from_edges(
-                GRAPH_MAX_FLOW_6["edges"], n=GRAPH_MAX_FLOW_6["n"]
-            )
-            print("✅ Đã nạp MẠNG LUỒNG 6 ĐỈNH (MAX FLOW) thành công!")
-        elif choice == '6':
-            n = int(input("Nhập số đỉnh n: ").strip())
+            n_raw = input("Nhập số đỉnh n: ").strip()
+            n = int(n_raw) if n_raw.isdigit() else None
             is_dir = input("Đồ thị có hướng không? (y/n): ").strip().lower() == 'y'
             print("Nhập từng cạnh (u v w), gõ 'done' hoặc ấn Enter dòng trống khi xong:")
             edges = []
@@ -87,10 +116,16 @@ class App: # hàm khởi tạo
                 if line.lower() == 'done' or not line:
                     break
                 p = line.split()
-                edges.append((int(p[0]), int(p[1]), float(p[2]) if len(p) >= 3 else 1))
+                if len(p) >= 2:
+                    edges.append((int(p[0]), int(p[1]), float(p[2]) if len(p) >= 3 else 1))
+            max_v = max([max(e[0], e[1]) for e in edges], default=-1)
+            if n is not None and n <= max_v:
+                print(f"⚠️ Lưu ý: Bạn nhập n = {n}, nhưng danh sách cạnh có đỉnh lớn nhất là {max_v}.")
+                print(f"   Hệ thống tự động điều chỉnh n = {max_v + 1} (các đỉnh từ 0 đến {max_v}) để đồ thị hợp lệ!")
+                n = max_v + 1
             self.graph = Graph(directed=is_dir).from_edges(edges, n=n)
-            print("✅ Đã nạp đồ thị từ bàn phím thành công!")
-        elif choice == '7':
+            print(f"✅ Đã nạp đồ thị từ bàn phím thành công ({self.graph.n} đỉnh, {len(edges)} cạnh)!")
+        elif choice == '6':
             n = int(input("Nhập số đỉnh n: ").strip())
             is_dir = input("Đồ thị có hướng không? (y/n): ").strip().lower() == 'y'
             print(f"Nhập {n} dòng ma trận kề:")
@@ -138,42 +173,85 @@ class App: # hàm khởi tạo
             )
 
         self.print_header("CHỨC NĂNG 3: DUYỆT ĐỒ THỊ (BFS / DFS & ANIMATION .GIF)")
-        print("1. Duyệt theo chiều rộng (BFS - Breadth-First Search + Bảng vết + Ảnh PNG)")
-        print("2. Duyệt theo chiều sâu  (DFS - Depth-First Search  + Bảng vết + Ảnh PNG)")
+        print("1. Duyệt theo chiều rộng (BFS - Breadth-First Search + Bảng vết + Tìm đường đi)")
+        print("2. Duyệt theo chiều sâu  (DFS - Depth-First Search  + Bảng vết + Tìm đường đi)")
         print("3. 🎬 Chạy Hoạt hình Animation DFS (Xuất file .GIF động từng bước duyệt & quay lui)")
         print("4. 🎬 Chạy Hoạt hình Animation BFS (Xuất file .GIF động từng bước đưa vào Queue)")
         
         traversal_type = input("👉 Chọn chức năng muốn duyệt (1-4): ").strip()
-        start = int(input(f"Nhập đỉnh bắt đầu (0 đến {self.graph.n - 1}): ").strip() or "0")
 
-        if traversal_type == '1':
-            bfs_order, bfs_tree, bfs_trace = bfs(self.graph.adj, self.graph.n, start)
-            print(f"\n🌊 KẾT QUẢ DUYỆT BFS TỪ ĐỈNH {start}:")
-            print("   • Thứ tự duyệt :", " -> ".join(map(str, bfs_order)))
-            print(f"   • Cây khung BFS ({len(bfs_tree)} cạnh):", bfs_tree)
-            print_bfs_trace(bfs_trace)
+        if traversal_type in ['1', '2']:
+            start = self._parse_node_input(f"Nhập đỉnh bắt đầu (0 đến {self.graph.n - 1}): ", 0)
+            end = self._parse_optional_node_input(f"Nhập đỉnh kết thúc (0 đến {self.graph.n - 1}, nhấn [Enter] để duyệt toàn bộ): ")
 
-            filename = "traversal_bfs_tree.png"
-            saved_path = draw(self.graph, filename=filename, highlight=bfs_tree)
-            print(f"\n🖼️  Đã vẽ và lưu ảnh Cây khung BFS vào: {os.path.relpath(saved_path)}")
+            if traversal_type == '1':
+                if end is not None:
+                    path, bfs_order, bfs_tree, bfs_trace = bfs_path(self.graph.adj, self.graph.n, start, end)
+                    print(f"\n🌊 KẾT QUẢ DUYỆT BFS TỪ {self._format_node(start)} ĐẾN {self._format_node(end)}:")
+                    if path:
+                        print("   • Đường đi tìm được (Số cạnh ít nhất):", self._format_path(path))
+                        print(f"   • Chiều dài đường đi: {len(path) - 1} cạnh (ít bước chuyển nhất)")
+                        print("   • Thứ tự các đỉnh đã duyệt trước khi chạm đích:", self._format_path(bfs_order))
+                        print(f"   • Cây khung BFS đã mở ({len(bfs_tree)} cạnh):", bfs_tree)
+                        print_bfs_trace(bfs_trace)
 
-        elif traversal_type == '2':
-            dfs_order, dfs_tree, dfs_trace = dfs(self.graph.adj, self.graph.n, start)
-            print(f"\n🌲 KẾT QUẢ DUYỆT DFS TỪ ĐỈNH {start}:")
-            print("   • Thứ tự duyệt :", " -> ".join(map(str, dfs_order)))
-            print(f"   • Cây khung DFS ({len(dfs_tree)} cạnh):", dfs_tree)
-            print_dfs_trace(dfs_trace)
+                        path_edges = [(path[i], path[i+1]) for i in range(len(path) - 1)]
+                        filename = "traversal_bfs_path.png"
+                        saved_path = draw(self.graph, filename=filename, highlight=path_edges)
+                        print(f"\n🖼️  Đã vẽ và lưu ảnh Đường đi BFS vào: {os.path.relpath(saved_path)}")
+                    else:
+                        print(f"   ❌ Không tìm thấy đường đi từ {self._format_node(start)} đến {self._format_node(end)} (Hai đỉnh không liên thông)!")
+                        print("   • Thứ tự các đỉnh đã duyệt:", self._format_path(bfs_order))
+                        print_bfs_trace(bfs_trace)
+                else:
+                    bfs_order, bfs_tree, bfs_trace = bfs(self.graph.adj, self.graph.n, start)
+                    print(f"\n🌊 KẾT QUẢ DUYỆT BFS TOÀN BỘ TỪ ĐỈNH {self._format_node(start)}:")
+                    print("   • Thứ tự duyệt :", self._format_path(bfs_order))
+                    print(f"   • Cây khung BFS ({len(bfs_tree)} cạnh):", bfs_tree)
+                    print_bfs_trace(bfs_trace)
 
-            filename = "traversal_dfs_tree.png"
-            saved_path = draw(self.graph, filename=filename, highlight=dfs_tree)
-            print(f"\n🖼️  Đã vẽ và lưu ảnh Cây khung DFS vào: {os.path.relpath(saved_path)}")
+                    filename = "traversal_bfs_tree.png"
+                    saved_path = draw(self.graph, filename=filename, highlight=bfs_tree)
+                    print(f"\n🖼️  Đã vẽ và lưu ảnh Cây khung BFS vào: {os.path.relpath(saved_path)}")
+
+            elif traversal_type == '2':
+                if end is not None:
+                    path, dfs_order, dfs_tree, dfs_trace = dfs_path(self.graph.adj, self.graph.n, start, end)
+                    print(f"\n🌲 KẾT QUẢ DUYỆT DFS TỪ {self._format_node(start)} ĐẾN {self._format_node(end)}:")
+                    if path:
+                        print("   • Đường đi tìm được (Theo chiều sâu DFS):", self._format_path(path))
+                        print(f"   • Chiều dài đường đi: {len(path) - 1} cạnh")
+                        print("   • Thứ tự các đỉnh đã duyệt trước khi chạm đích:", self._format_path(dfs_order))
+                        print(f"   • Cây khung DFS đã mở ({len(dfs_tree)} cạnh):", dfs_tree)
+                        print_dfs_trace(dfs_trace)
+
+                        path_edges = [(path[i], path[i+1]) for i in range(len(path) - 1)]
+                        filename = "traversal_dfs_path.png"
+                        saved_path = draw(self.graph, filename=filename, highlight=path_edges)
+                        print(f"\n🖼️  Đã vẽ và lưu ảnh Đường đi DFS vào: {os.path.relpath(saved_path)}")
+                    else:
+                        print(f"   ❌ Không tìm thấy đường đi từ {self._format_node(start)} đến {self._format_node(end)} (Hai đỉnh không liên thông)!")
+                        print("   • Thứ tự các đỉnh đã duyệt:", self._format_path(dfs_order))
+                        print_dfs_trace(dfs_trace)
+                else:
+                    dfs_order, dfs_tree, dfs_trace = dfs(self.graph.adj, self.graph.n, start)
+                    print(f"\n🌲 KẾT QUẢ DUYỆT DFS TOÀN BỘ TỪ ĐỈNH {self._format_node(start)}:")
+                    print("   • Thứ tự duyệt :", self._format_path(dfs_order))
+                    print(f"   • Cây khung DFS ({len(dfs_tree)} cạnh):", dfs_tree)
+                    print_dfs_trace(dfs_trace)
+
+                    filename = "traversal_dfs_tree.png"
+                    saved_path = draw(self.graph, filename=filename, highlight=dfs_tree)
+                    print(f"\n🖼️  Đã vẽ và lưu ảnh Cây khung DFS vào: {os.path.relpath(saved_path)}")
 
         elif traversal_type == '3':
+            start = self._parse_node_input(f"Nhập đỉnh bắt đầu (0 đến {self.graph.n - 1}): ", 0)
             print(f"\n🎬 Đang tạo Animation trực quan hóa từng bước DFS từ đỉnh {start}...")
             gif_path = animate_dfs(self.graph, start=start, filename="traversal_dfs_animation.gif", fps=1.5)
             print(f"🎉 Hoàn tất! File ảnh động đã lưu tại: {os.path.relpath(gif_path)}")
 
         elif traversal_type == '4':
+            start = self._parse_node_input(f"Nhập đỉnh bắt đầu (0 đến {self.graph.n - 1}): ", 0)
             print(f"\n🎬 Đang tạo Animation trực quan hóa từng bước BFS từ đỉnh {start}...")
             gif_path = animate_bfs(self.graph, start=start, filename="traversal_bfs_animation.gif", fps=1.5)
             print(f"🎉 Hoàn tất! File ảnh động đã lưu tại: {os.path.relpath(gif_path)}")
@@ -186,28 +264,23 @@ class App: # hàm khởi tạo
     def handle_bipartite(self):
         self.print_header("CHỨC NĂNG 4: KIỂM TRA ĐỒ THỊ HAI PHÍA (BIPARTITE)")
         print("1. Kiểm tra đồ thị hiện tại")
-        print("2. Test với Đồ thị 2 phía mẫu (Hình vuông C4)")
-        print("3. Test với Đồ thị KHÔNG 2 phía mẫu (Tam giác C3)")
-        print("4. Test với Đồ thị mẫu 20 đỉnh")
-        c = input("👉 Chọn (1-4): ").strip()
+        print("2. Test với Đồ thị 2 phía mẫu 15 đỉnh (Phân hoạch V1, V2)")
+        print("3. Test với Đồ thị mẫu 20 đỉnh (Không 2 phía - Bắt chu trình lẻ)")
+        c = input("👉 Chọn (1-3): ").strip()
         
         g_test = self.graph
         if c == '1' and g_test is None:
-            print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp đồ thị mẫu 20 đỉnh...")
-            g_test = Graph(directed=GRAPH_UNDIRECTED_20["directed"]).from_edges(
-                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"]
+            print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp Đồ thị 2 phía mẫu 15 đỉnh...")
+            g_test = Graph(directed=GRAPH_BIPARTITE_15["directed"]).from_edges(
+                GRAPH_BIPARTITE_15["edges"], n=GRAPH_BIPARTITE_15["n"], pos=GRAPH_BIPARTITE_15.get("pos")
             )
         elif c == '2':
-            g_test = Graph(directed=GRAPH_BIPARTITE["directed"]).from_edges(
-                GRAPH_BIPARTITE["edges"], n=GRAPH_BIPARTITE["n"]
+            g_test = Graph(directed=GRAPH_BIPARTITE_15["directed"]).from_edges(
+                GRAPH_BIPARTITE_15["edges"], n=GRAPH_BIPARTITE_15["n"], pos=GRAPH_BIPARTITE_15.get("pos")
             )
         elif c == '3':
-            g_test = Graph(directed=GRAPH_NOT_BIPARTITE["directed"]).from_edges(
-                GRAPH_NOT_BIPARTITE["edges"], n=GRAPH_NOT_BIPARTITE["n"]
-            )
-        elif c == '4':
             g_test = Graph(directed=GRAPH_UNDIRECTED_20["directed"]).from_edges(
-                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"]
+                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"], pos=GRAPH_UNDIRECTED_20.get("pos")
             )
 
         res = check_bipartite(g_test.adj, g_test.n)
@@ -243,14 +316,14 @@ class App: # hàm khởi tạo
         print("2. Thuật toán Bellman-Ford (Xử lý trọng số âm & Bắt chu trình âm)")
         
         algo_choice = input("👉 Chọn thuật toán (1 hoặc 2): ").strip()
-        start = int(input(f"Nhập đỉnh nguồn (start, 0 đến {self.graph.n - 1}): ").strip() or "0")
-        end = int(input(f"Nhập đỉnh đích (end, 0 đến {self.graph.n - 1}): ").strip() or str(self.graph.n - 1))
+        start = self._parse_node_input(f"Nhập đỉnh nguồn (start, 0 đến {self.graph.n - 1}): ", 0)
+        end = self._parse_node_input(f"Nhập đỉnh đích (end, 0 đến {self.graph.n - 1}): ", self.graph.n - 1)
 
         if algo_choice == '1':
             d_res = dijkstra(self.graph.adj, self.graph.n, start, end)
-            print(f"\n⚡ KẾT QUẢ THUẬT TOÁN DIJKSTRA ({start} -> {end}):")
+            print(f"\n⚡ KẾT QUẢ THUẬT TOÁN DIJKSTRA ({self._format_node(start)} -> {self._format_node(end)}):")
             print(f"   • Chi phí ngắn nhất : {d_res['cost']}")
-            print(f"   • Lộ trình đường đi : {' -> '.join(map(str, d_res['path'])) if d_res['path'] else 'Không có đường đi'}")
+            print(f"   • Lộ trình đường đi : {self._format_path(d_res['path']) if d_res['path'] else 'Không có đường đi'}")
             print_dijkstra_trace(d_res["trace"])
 
             if d_res ["path"]:
@@ -261,9 +334,9 @@ class App: # hàm khởi tạo
 
         elif algo_choice == '2':
             b_res = bellman_ford(self.graph.edges, self.graph.n, start, self.graph.directed, end)
-            print(f"\n🔍 KẾT QUẢ THUẬT TOÁN BELLMAN-FORD ({start} -> {end}):")
+            print(f"\n🔍 KẾT QUẢ THUẬT TOÁN BELLMAN-FORD ({self._format_node(start)} -> {self._format_node(end)}):")
             print(f"   • Chi phí ngắn nhất     : {b_res['cost']}")
-            print(f"   • Lộ trình đường đi     : {' -> '.join(map(str, b_res['path'])) if b_res['path'] else 'Không có đường đi'}")
+            print(f"   • Lộ trình đường đi     : {self._format_path(b_res['path']) if b_res['path'] else 'Không có đường đi'}")
             print(f"   • Phát hiện chu trình âm: {b_res['has_negative_cycle']}")
 
             if b_res["path"]:
@@ -279,19 +352,20 @@ class App: # hàm khởi tạo
     # =========================================================================
     def handle_euler(self):
         self.print_header("CHỨC NĂNG 6: CHU TRÌNH & ĐƯỜNG ĐI EULER (FLEURY / HIERHOLZER)")
-        print("1. Chạy trên Đồ thị Ngôi nhà mẫu (Có Đường đi Euler)")
-        print("2. Chạy trên Đồ thị C5 + Sao mẫu (Có Chu trình Euler)")
-        print("3. Chạy trên Đồ thị hiện tại")
+        print("1. Chạy trên Đồ thị Euler mẫu 15 đỉnh (Chu trình Euler 4-regular 30 cạnh)")
+        print("2. Chạy trên Đồ thị hiện tại")
         
-        c = input("👉 Chọn đồ thị (1-3): ").strip()
+        c = input("👉 Chọn đồ thị (1-2): ").strip()
         if c == '1':
-            g_euler = Graph(directed=False).from_edges(GRAPH_EULER_HOUSE["edges"], n=GRAPH_EULER_HOUSE["n"])
-        elif c == '2':
-            g_euler = Graph(directed=False).from_edges(GRAPH_EULER_CIRCUIT["edges"], n=GRAPH_EULER_CIRCUIT["n"])
+            g_euler = Graph(directed=GRAPH_EULER_15["directed"]).from_edges(
+                GRAPH_EULER_15["edges"], n=GRAPH_EULER_15["n"], pos=GRAPH_EULER_15.get("pos")
+            )
         else:
             if self.graph is None:
-                print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp Đồ thị Ngôi nhà mẫu...")
-                g_euler = Graph(directed=False).from_edges(GRAPH_EULER_HOUSE["edges"], n=GRAPH_EULER_HOUSE["n"])
+                print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp Đồ thị Euler mẫu 15 đỉnh...")
+                g_euler = Graph(directed=GRAPH_EULER_15["directed"]).from_edges(
+                    GRAPH_EULER_15["edges"], n=GRAPH_EULER_15["n"], pos=GRAPH_EULER_15.get("pos")
+                )
             else:
                 g_euler = self.graph
 
@@ -336,19 +410,20 @@ class App: # hàm khởi tạo
     # =========================================================================
     def handle_mst(self):
         self.print_header("CHỨC NĂNG 7: CÂY KHUNG NHỎ NHẤT (PRIM & KRUSKAL DSU)")
-        print("1. Chạy trên Đồ thị mẫu 6 đỉnh (MST = 13)")
-        print("2. Chạy trên Đồ thị mẫu 20 đỉnh")
-        print("3. Chạy trên Đồ thị hiện tại")
+        print("1. Chạy trên Đồ thị vô hướng mẫu 20 đỉnh")
+        print("2. Chạy trên Đồ thị hiện tại")
         
-        c = input("👉 Chọn đồ thị (1-3): ").strip()
+        c = input("👉 Chọn đồ thị (1-2): ").strip()
         if c == '1':
-            g_mst = Graph(directed=False).from_edges(GRAPH_MST_6["edges"], n=GRAPH_MST_6["n"])
-        elif c == '2':
-            g_mst = Graph(directed=False).from_edges(GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"])
+            g_mst = Graph(directed=False).from_edges(
+                GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"], pos=GRAPH_UNDIRECTED_20.get("pos")
+            )
         else:
             if self.graph is None:
-                print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp Đồ thị mẫu 6 đỉnh...")
-                g_mst = Graph(directed=False).from_edges(GRAPH_MST_6["edges"], n=GRAPH_MST_6["n"])
+                print("⚠️ Chưa có đồ thị hiện tại! Tự động nạp Đồ thị mẫu 20 đỉnh...")
+                g_mst = Graph(directed=False).from_edges(
+                    GRAPH_UNDIRECTED_20["edges"], n=GRAPH_UNDIRECTED_20["n"], pos=GRAPH_UNDIRECTED_20.get("pos")
+                )
             else:
                 g_mst = self.graph
 
@@ -358,9 +433,9 @@ class App: # hàm khởi tạo
         algo = input("👉 Chọn thuật toán (1 hoặc 2): ").strip()
 
         if algo == '1':
-            start = int(input(f"Nhập đỉnh xuất phát (0 đến {g_mst.n - 1}): ").strip() or "0")
+            start = self._parse_node_input(f"Nhập đỉnh xuất phát (0 đến {g_mst.n - 1}): ", 0)
             mst_edges, total_w, trace = prim(g_mst.adj, g_mst.n, start=start)
-            print(f"\n🌲 KẾT QUẢ THUẬT TOÁN PRIM (MST TỪ ĐỈNH {start}):")
+            print(f"\n🌲 KẾT QUẢ THUẬT TOÁN PRIM (MST TỪ ĐỈNH {self._format_node(start)}):")
             print(f"   • Tổng trọng số cây khung : {total_w}")
             print(f"   • Danh sách {len(mst_edges)} cạnh cây khung : {mst_edges}")
             print_prim_trace(trace)
@@ -387,31 +462,44 @@ class App: # hàm khởi tạo
     # =========================================================================
     def handle_max_flow(self):
         self.print_header("CHỨC NĂNG 8: LUỒNG CỰC ĐẠI & LÁT CẮT HẸP NHẤT (FORD-FULKERSON)")
-        print("1. Chạy trên Mạng luồng mẫu 6 đỉnh (S=0 -> T=5, Max Flow = 23)")
-        print("2. Chạy trên Đồ thị có hướng 20 đỉnh")
-        print("3. Chạy trên Đồ thị hiện tại")
+        print("1. Chạy trên Đồ thị có hướng mẫu 20 đỉnh (S=0 -> T=19, Max Flow = 11)")
+        print("2. Chạy trên Đồ thị hiện tại")
 
-        c = input("👉 Chọn mạng luồng (1-3): ").strip()
+        c = input("👉 Chọn mạng luồng (1-2): ").strip()
         if c == '1':
-            g_flow = Graph(directed=True).from_edges(GRAPH_MAX_FLOW_6["edges"], n=GRAPH_MAX_FLOW_6["n"])
-            source = GRAPH_MAX_FLOW_6["source"]
-            sink = GRAPH_MAX_FLOW_6["sink"]
-        elif c == '2':
             g_flow = Graph(directed=True).from_edges(
                 GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"], pos=GRAPH_DIRECTED_20.get("pos")
             )
             source = 0
             sink = 19
         else:
-            if self.graph is None or not self.graph.directed:
-                print("⚠️ Chưa có đồ thị có hướng! Tự động nạp Mạng luồng mẫu 6 đỉnh...")
-                g_flow = Graph(directed=True).from_edges(GRAPH_MAX_FLOW_6["edges"], n=GRAPH_MAX_FLOW_6["n"])
+            if self.graph is None:
+                print("⚠️ Chưa có đồ thị trong bộ nhớ! Tự động nạp Đồ thị có hướng 20 đỉnh...")
+                g_flow = Graph(directed=True).from_edges(
+                    GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"], pos=GRAPH_DIRECTED_20.get("pos")
+                )
                 source = 0
-                sink = 5
+                sink = 19
+            elif not self.graph.directed:
+                print(f"ℹ️ Đồ thị hiện tại là đồ thị vô hướng ({self.graph.n} đỉnh).")
+                print("   Hệ thống tự động coi các cạnh là 2 chiều (dung lượng dòng chảy 2 chiều) để tìm luồng cực đại.")
+                flow_edges = []
+                for edge in self.graph.edges:
+                    u, v = edge[0], edge[1]
+                    w = edge[2] if len(edge) > 2 else 1
+                    flow_edges.append((u, v, w))
+                    flow_edges.append((v, u, w))
+                g_flow = Graph(directed=True).from_edges(
+                    flow_edges, n=self.graph.n, pos=getattr(self.graph, "pos", None)
+                )
+                setattr(g_flow, "original_undirected", True)
+                setattr(g_flow, "base_edges", list(self.graph.edges))
+                source = self._parse_node_input(f"Nhập đỉnh Nguồn S (0 đến {g_flow.n - 1}, mặc định 0): ", 0)
+                sink = self._parse_node_input(f"Nhập đỉnh Đích T (0 đến {g_flow.n - 1}, mặc định {g_flow.n - 1}): ", g_flow.n - 1)
             else:
                 g_flow = self.graph
-                source = int(input(f"Nhập đỉnh Nguồn S (0 đến {g_flow.n - 1}): ").strip() or "0")
-                sink = int(input(f"Nhập đỉnh Đích T (0 đến {g_flow.n - 1}): ").strip() or str(g_flow.n - 1))
+                source = self._parse_node_input(f"Nhập đỉnh Nguồn S (0 đến {g_flow.n - 1}, mặc định 0): ", 0)
+                sink = self._parse_node_input(f"Nhập đỉnh Đích T (0 đến {g_flow.n - 1}, mặc định {g_flow.n - 1}): ", g_flow.n - 1)
 
         max_f, flow_mat, min_cut, cut_sets, trace = ford_fulkerson(g_flow.edges, g_flow.n, source, sink)
         S_set, T_set = cut_sets
@@ -448,23 +536,34 @@ class App: # hàm khởi tạo
         print(f"• Shortest (0->19) : {' -> '.join(map(str, sp_res['path']))} (Chi phí: {sp_res['cost']})")
         draw(g20, filename="demo_20_graph.png", show=False)
 
-        # 2. Euler
-        g_e = Graph(directed=False).from_edges(GRAPH_EULER_HOUSE["edges"], n=GRAPH_EULER_HOUSE["n"])
-        e_path, e_edges, _ = hierholzer(g_e.adj, g_e.n, 2)
-        print(f"\n[PHẦN 7.1-7.2 EULER] Đồ thị Ngôi nhà: {' -> '.join(map(str, e_path))}")
-        draw_euler(g_e, e_path, e_edges, filename="demo_euler_house.png", show=False)
+        # 2. Đồ thị 2 phía 15 đỉnh (Bipartite)
+        g_bip = Graph(directed=GRAPH_BIPARTITE_15["directed"]).from_edges(
+            GRAPH_BIPARTITE_15["edges"], n=GRAPH_BIPARTITE_15["n"], pos=GRAPH_BIPARTITE_15.get("pos")
+        )
+        res_bip = check_bipartite(g_bip.adj, g_bip.n)
+        print(f"\n[PHẦN 4 BIPARTITE] Đồ thị 2 phía 15 đỉnh: {res_bip['is_bipartite']} | V1: {len(res_bip['v1'])} đỉnh, V2: {len(res_bip['v2'])} đỉnh")
+        draw(g_bip, filename="demo_bipartite_15.png", colors=res_bip["colors"], show=False)
 
-        # 3. MST
-        g_m = Graph(directed=False).from_edges(GRAPH_MST_6["edges"], n=GRAPH_MST_6["n"])
-        k_mst, k_w, _ = kruskal(g_m.edges, g_m.n)
-        print(f"[PHẦN 7.3-7.4 MST] Kruskal MST = {k_w} | {k_mst}")
-        draw_mst(g_m, k_mst, k_w, filename="demo_mst_6.png", show=False)
+        # 3. Đồ thị Euler 15 đỉnh (Eulerian Circuit)
+        g_e = Graph(directed=GRAPH_EULER_15["directed"]).from_edges(
+            GRAPH_EULER_15["edges"], n=GRAPH_EULER_15["n"], pos=GRAPH_EULER_15.get("pos")
+        )
+        e_path, e_edges, _ = hierholzer(g_e.adj, g_e.n, 0)
+        print(f"[PHẦN 7.1-7.2 EULER] Đồ thị Euler 15 đỉnh: {' -> '.join(map(str, e_path[:8]))} ... ({len(e_edges)} cạnh)")
+        draw_euler(g_e, e_path, e_edges, filename="demo_euler_15.png", show=False)
 
-        # 4. Max Flow
-        g_f = Graph(directed=True).from_edges(GRAPH_MAX_FLOW_6["edges"], n=GRAPH_MAX_FLOW_6["n"])
-        mf, f_mat, min_c, _, _ = ford_fulkerson(g_f.edges, g_f.n, 0, 5)
-        print(f"[PHẦN 7.5 MAX FLOW] Ford-Fulkerson Max Flow = {mf} | Min Cut = {min_c}")
-        draw_max_flow(g_f, f_mat, min_c, mf, 0, 5, filename="demo_max_flow_6.png", show=False)
+        # 4. MST trên đồ thị 20 đỉnh
+        k_mst, k_w, _ = kruskal(g20.edges, g20.n)
+        print(f"[PHẦN 7.3-7.4 MST] Kruskal MST 20 đỉnh = {k_w} ({len(k_mst)} cạnh)")
+        draw_mst(g20, k_mst, k_w, filename="demo_mst_20.png", show=False)
+
+        # 5. Max Flow trên đồ thị có hướng 20 đỉnh
+        g_dir = Graph(directed=GRAPH_DIRECTED_20["directed"]).from_edges(
+            GRAPH_DIRECTED_20["edges"], n=GRAPH_DIRECTED_20["n"], pos=GRAPH_DIRECTED_20.get("pos")
+        )
+        mf, f_mat, min_c, _, _ = ford_fulkerson(g_dir.edges, g_dir.n, 0, 19)
+        print(f"[PHẦN 7.5 MAX FLOW] Ford-Fulkerson Max Flow (0->19) = {mf} | Min Cut = {min_c}")
+        draw_max_flow(g_dir, f_mat, min_c, mf, 0, 19, filename="demo_max_flow_20.png", show=False)
 
         print("\n" + "=" * 70)
         print("🎉 TẤT CẢ CÁC THUẬT TOÁN ĐÃ ĐƯỢC GIẢI TOÀN DIỆN VÀ CHÍNH XÁC 100%!")

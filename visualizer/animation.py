@@ -44,7 +44,8 @@ def _generate_dfs_frames(g, start=0):
             "action": f"Bắt đầu duyệt từ đỉnh nguồn {u}" if parent is None else f"Đi theo cạnh ({parent} -> {u}) thăm đỉnh mới {u}"
         })
 
-        for v, _ in g.adj[u]:
+        neighbors = sorted([v for v, _ in g.adj.get(u, [])])
+        for v in neighbors:
             if not visited[v]:
                 dfs_recursive(v, u)
                 events.append({
@@ -113,7 +114,8 @@ def _generate_bfs_frames(g, start=0):
             "action": f"Lấy đỉnh {u} ra khỏi Queue để duyệt các đỉnh kề"
         })
 
-        for v, _ in g.adj[u]:
+        neighbors = sorted([v for v, _ in g.adj.get(u, [])])
+        for v in neighbors:
             if not visited[v]:
                 visited[v] = True
                 queue.append(v)
@@ -149,6 +151,8 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
     filepath = _resolve_filepath(filename)
 
     coords, R, node_r, fs_node, fs_edge, fig_sz = compute_smart_layout(g)
+    labels = getattr(g, "labels", None)
+    curvatures = getattr(g, "curvatures", {}) or {}
     
     if method.lower() == "dfs":
         frames_data = _generate_dfs_frames(g, start)
@@ -231,7 +235,7 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
                             lw=lw,
                             mutation_scale=14,
                             linestyle=ls,
-                            connectionstyle="arc3,rad=0.08"
+                            connectionstyle=f"arc3,rad={curvatures.get((u, v), 0.08)}"
                         ),
                         zorder=z
                     )
@@ -267,7 +271,8 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
             ax.add_patch(circle)
 
             text_col = "#0f172a" if (is_active_node or is_in_stack or is_visited) else "#e2e8f0"
-            ax.text(x, y, str(i), color=text_col, fontsize=fs_node, fontweight="bold", ha="center", va="center", zorder=8)
+            text_val = labels.get(i, str(i)) if labels else str(i)
+            ax.text(x, y, text_val, color=text_col, fontsize=fs_node, fontweight="bold", ha="center", va="center", zorder=8)
 
         ax.set_title(
             f"{title_prefix}\n[Bước {frame_idx + 1}/{len(frames_data)}] — {action_text}",
@@ -292,7 +297,19 @@ def animate_traversal(g, method="dfs", start=0, filename=None, fps=1.5, interval
     anim = animation.FuncAnimation(fig, draw_frame, frames=len(frames_data), interval=interval, repeat=False)
 
     print(f"⏳ Đang dựng và xuất Animation ({len(frames_data)} khung hình)...")
-    anim.save(filepath, writer="pillow", fps=fps)
+    try:
+        anim.save(filepath, writer="pillow", fps=fps)
+    except OSError:
+        base, ext = os.path.splitext(filepath)
+        import time
+        alt_filepath = f"{base}_{int(time.time())}{ext}"
+        try:
+            anim.save(alt_filepath, writer="pillow", fps=fps)
+            print(f"\n[!] Cảnh báo: Tệp '{os.path.basename(filepath)}' đang được mở hoặc bị khóa bởi ứng dụng khác.")
+            print(f"    -> Đã tự động lưu Animation thành: '{os.path.basename(alt_filepath)}'")
+            filepath = alt_filepath
+        except Exception as e:
+            print(f"\n[!] Lỗi: Không thể lưu Animation: {e}")
     plt.close(fig)
 
     print(f"🎬 Đã tạo thành công Animation tại: {os.path.relpath(filepath)}")

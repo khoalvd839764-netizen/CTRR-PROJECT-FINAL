@@ -41,7 +41,8 @@ from ung_dung_thuc_te.config import (
     COLOR_NODE_DEFAULT, COLOR_NODE_UTH, COLOR_NODE_HOSPITAL, COLOR_NODE_FIRE,
     COLOR_NODE_LANDMARK, COLOR_NODE_REMOTE, COLOR_NODE_ACCIDENT,
     COLOR_TEXT_WHITE, COLOR_TEXT_MUTED, COLOR_TEXT_HIGHLIGHT, COLOR_TEXT_CYAN, COLOR_TEXT_RED, COLOR_TEXT_GREEN,
-    STATE_IDLE, STATE_MENU_OPEN, STATE_BFS_SCAN, STATE_DIJKSTRA_TRACE, STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED
+    STATE_IDLE, STATE_MENU_OPEN, STATE_BFS_SCAN, STATE_DIJKSTRA_TRACE, STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED,
+    STATE_EARLY_WARNING, STATE_DYNAMIC_REROUTE
 )
 from ung_dung_thuc_te.city_graph import CityTrafficGraph
 from ung_dung_thuc_te.dispatcher import EmergencyDispatcher
@@ -62,7 +63,7 @@ from ung_dung_thuc_te.map_renderer import (
 from ung_dung_thuc_te.route_overlay import (
     get_route_badge_pos, draw_route_note_badge, draw_secondary_routes_panel,
     draw_mst_network, draw_bfs_waves, draw_tactical_banner,
-    draw_dijkstra_trace, draw_committed_routes
+    draw_dijkstra_trace, draw_committed_routes, draw_early_warning_indicator
 )
 
 
@@ -124,7 +125,13 @@ def run():
         "station_candidates": [],
         "candidate_phase": 0,
         "route_cost": None,
-        "rerouted": False
+        "rerouted": False,
+        "warning_info": None,
+        "active_rerouting_vehicle": None,
+        "pending_new_subpath": [],
+        "pending_new_cost": 0,
+        "pending_old_cost": 0,
+        "dynamic_reroute_count": 0
     }
 
     active_menu = None
@@ -148,6 +155,9 @@ def run():
     dijkstra_step_delay = 14     # ~0.23s mỗi bước Dijkstra để quan sát rõ nới lỏng ngã rẽ và nhãn d[v]
     dijkstra_complete_pause = 0  # Dừng sau khi tìm ra đích để làm nổi bật đường chốt & các tuyến dự phòng
     path_locked_timer = 0        # Thời gian dừng chốt lộ trình (~0.8s) trước khi xe xuất phát
+    warning_timer = 0            # Đếm thời gian cảnh báo sớm kẹt xe
+    dynamic_dijkstra_step_delay = 3 # Tốc độ quét Dijkstra tăng tốc khi gặp sự cố
+    dynamic_dijkstra_pause = 0   # Dừng ngắn sau khi quét tăng tốc xong
 
     candidate_phase = 0
     route_search_step = 0
@@ -176,6 +186,7 @@ def run():
         nonlocal explored_layers, highlighted_stations, dispatch_res, station_highlight_timer
         nonlocal candidate_phase, route_search_step, route_search_timer, route_search_pause, path_locked_timer
         nonlocal dijkstra_trace_steps, dijkstra_step_idx, dijkstra_step_timer, dijkstra_complete_pause
+        nonlocal warning_timer, dynamic_dijkstra_pause
         
         sim_state["state_label"] = STATE_IDLE
         sim_state["accident_node"] = None
@@ -196,6 +207,12 @@ def run():
         sim_state["candidate_phase"] = 0
         sim_state["route_cost"] = None
         sim_state["rerouted"] = False
+        sim_state["warning_info"] = None
+        sim_state["active_rerouting_vehicle"] = None
+        sim_state["pending_new_subpath"] = []
+        sim_state["pending_new_cost"] = 0
+        sim_state["pending_old_cost"] = 0
+        sim_state["dynamic_reroute_count"] = 0
         
         active_menu = None
         active_vehicles = []
@@ -211,6 +228,8 @@ def run():
         route_search_timer = 0
         route_search_pause = 0
         path_locked_timer = 0
+        warning_timer = 0
+        dynamic_dijkstra_pause = 0
         dijkstra_trace_steps = []
         dijkstra_step_idx = 0
         dijkstra_step_timer = 0
@@ -521,17 +540,144 @@ def run():
                         hud.add_log("• Xe ưu tiên đã xuất phát theo Tuyến 1 (Tối ưu nhất)!", (50, 240, 200))
 
 
-            # 2.4 DI CHUYỂN CÁC XE CỨU HỘ
+            # 2.4 DI CHUYỂN CÁC XE CỨU HỘ & PHÁT HIỆN CẢNH BÁO SỚM KẸT XE
             elif sim_state["state_label"] == STATE_DISPATCHING:
                 all_arrived = True
+                triggered_early_warning = False
+
                 for veh in active_vehicles:
-                    veh.update()
+                    next_target_node = veh.path[veh.path_index + 1] if veh.path_index < len(veh.path) - 1 else None
+                    reached_node = veh.update()
                     if not veh.arrived:
                         all_arrived = False
 
-                if all_arrived and len(active_vehicles) > 0 and sim_state["state_label"] != STATE_RESOLVED:
+                    if reached_node is not None and not veh.arrived:
+                        c_reroute = sim_state.get("dynamic_reroute_count", 0)
+                        # Đảm bảo ngã ba đầu tiên xuất hiện kẹt xe để phục vụ kịch bản thuyết trình ấn tượng
+                        chance_jam = 1.0 if c_reroute == 0 else 0.45
+
+                        # 1. Gây biến động kẹt xe ngẫu nhiên tại các ngã rẽ lân cận
+                        events = city.fluctuate_traffic_near_node(reached_node, chance_next_jam=chance_jam, next_node=next_target_node)
+                        for u, v, c_val, is_heavy, street in events:
+                            if is_heavy:
+                                hud.add_log(f"⚠️ [ÙN TẮC] {street}: Kẹt xe đột xuất (x{c_val:.1f})!", (255, 90, 90))
+
+                        # 2. Kiểm tra nếu đoạn phía trước bị kẹt nặng
+                        next_jammed = (next_target_node is not None and city.congestion.get((reached_node, next_target_node), 1.0) >= 3.0)
+
+                        if next_jammed and c_reroute < 2:
+                            street_jam = city.get_edge_name(reached_node, next_target_node)
+                            node_code = city.nodes[reached_node]["code"]
+
+                            sim_state["state_label"] = STATE_EARLY_WARNING
+                            sim_state["warning_info"] = {
+                                "node_id": reached_node,
+                                "node_code": node_code,
+                                "next_node_id": next_target_node,
+                                "street": street_jam
+                            }
+                            sim_state["active_rerouting_vehicle"] = veh
+                            warning_timer = 0
+
+                            hud.add_log(f"⚠️ [CẢNH BÁO SỚM] Phía trước kẹt nặng ({street_jam})! Xe dừng tại ngã ba [{node_code}].", (255, 80, 80))
+                            hud.add_log("• Chuẩn bị quét Dijkstra tăng tốc từ ngã rẽ để tìm đường né tắc...", (255, 215, 0))
+                            triggered_early_warning = True
+                            break
+
+                if triggered_early_warning:
+                    pass
+                elif all_arrived and len(active_vehicles) > 0 and sim_state["state_label"] != STATE_RESOLVED:
                     sim_state["state_label"] = STATE_RESOLVED
                     hud.add_log("• Tất cả lực lượng đã tiếp cận hiện trường an toàn!", (50, 255, 120))
+
+            # 2.5 PHA CẢNH BÁO SỚM KẸT XE (~0.75s) TRƯỚC KHI QUÉT TĂNG TỐC
+            elif sim_state["state_label"] == STATE_EARLY_WARNING:
+                warning_timer += 1
+                if warning_timer >= 45:  # ~0.75 giây quan sát rõ cảnh báo
+                    w_info = sim_state.get("warning_info", {})
+                    curr_node = w_info.get("node_id")
+                    target_veh = sim_state.get("active_rerouting_vehicle")
+
+                    if target_veh and curr_node is not None:
+                        # Tính toán Dijkstra đầy đủ các bước chuẩn CTRR từ ngã ba hiện tại đến hiện trường
+                        trace_res = router.compute_route_with_trace(curr_node, target_veh.dest_id)
+                        new_subpath = trace_res.get("path", [])
+                        new_cost = trace_res.get("cost", float("inf"))
+
+                        old_remaining_cost = sum(
+                            city.get_effective_weight(target_veh.path[i], target_veh.path[i + 1])
+                            for i in range(target_veh.path_index, len(target_veh.path) - 1)
+                        )
+
+                        sim_state["state_label"] = STATE_DYNAMIC_REROUTE
+                        sim_state["dijkstra_trace_steps"] = trace_res.get("ctrr_steps", [])
+                        sim_state["pending_new_subpath"] = new_subpath
+                        sim_state["pending_new_cost"] = new_cost
+                        sim_state["pending_old_cost"] = old_remaining_cost
+
+                        dijkstra_step_idx = 0
+                        dijkstra_step_timer = 0
+                        dynamic_dijkstra_pause = 0
+                        sim_state["dijkstra_step_idx"] = 0
+                        hud.add_log(f"⚡ [DYNAMIC DIJKSTRA] Bắt đầu quét tăng tốc từ ngã ba [{w_info.get('node_code')}]...", (0, 240, 255))
+                    else:
+                        sim_state["state_label"] = STATE_DISPATCHING
+
+            # 2.6 PHA QUÉT DIJKSTRA TĂNG TỐC TRỰC QUAN TỪ NGÃ BA ĐẾN HIỆN TRƯỜNG
+            elif sim_state["state_label"] == STATE_DYNAMIC_REROUTE:
+                dijkstra_steps = sim_state.get("dijkstra_trace_steps", [])
+                total_steps = len(dijkstra_steps)
+
+                if total_steps == 0:
+                    sim_state["state_label"] = STATE_DISPATCHING
+                elif dijkstra_step_idx < total_steps:
+                    dijkstra_step_timer += 1
+                    if dijkstra_step_timer >= dynamic_dijkstra_step_delay:  # 3 frames/bước (tăng tốc gấp ~4.5 lần)
+                        dijkstra_step_timer = 0
+                        dijkstra_step_idx += 1
+                        sim_state["dijkstra_step_idx"] = dijkstra_step_idx
+                        if dijkstra_step_idx < total_steps:
+                            step_data = dijkstra_steps[dijkstra_step_idx]
+                            sim_state["current_dijkstra_step_data"] = step_data
+                            u_code = step_data["u_code"]
+                            u_dist_str = safe_dist_str(step_data["u_dist"])
+                            rel_count = len(step_data.get("relaxations", []))
+                            if dijkstra_step_idx == 0 or dijkstra_step_idx == total_steps - 1 or dijkstra_step_idx % 2 == 0:
+                                hud.add_log(f"⚡ [Quét {dijkstra_step_idx + 1}/{total_steps}] Chốt [{u_code}] (d={u_dist_str}) -> Xét {rel_count} nhánh", (255, 215, 0))
+                else:
+                    dynamic_dijkstra_pause += 1
+                    if dynamic_dijkstra_pause >= 20:  # Dừng 0.33s để quan sát kết quả
+                        target_veh = sim_state.get("active_rerouting_vehicle")
+                        new_subpath = sim_state.get("pending_new_subpath", [])
+                        new_cost = sim_state.get("pending_new_cost", float("inf"))
+                        old_cost = sim_state.get("pending_old_cost", float("inf"))
+
+                        if target_veh and new_subpath and len(new_subpath) >= 2:
+                            is_diff = (new_subpath != target_veh.path[target_veh.path_index:])
+                            if is_diff:
+                                target_veh.reroute_from_current(new_subpath)
+                                sim_state["rerouted"] = True
+
+                                for pinfo in sim_state.get("all_paths", []):
+                                    if pinfo.get("station_id") == target_veh.station_id:
+                                        pinfo["path"] = list(target_veh.path)
+                                        pinfo["cost"] = new_cost
+                                for st_info in sim_state.get("station_candidates", []):
+                                    if st_info.get("station_id") == target_veh.station_id:
+                                        cands = st_info.get("candidates", [])
+                                        if cands:
+                                            cands[0]["path"] = list(target_veh.path)
+                                            cands[0]["cost"] = new_cost
+                                if sim_state.get("current_path") and (active_vehicles and target_veh == active_vehicles[0]):
+                                    sim_state["current_path"] = list(target_veh.path)
+                                    sim_state["route_cost"] = new_cost
+
+                                hud.add_log(f"⚡ [BẺ LÁI THÀNH CÔNG] Tuyến mới ({safe_dist_str(new_cost)}) né tắc! Tiếp tục di chuyển.", (50, 255, 140))
+                            else:
+                                hud.add_log(f"• [KẾT QUẢ DIJKSTRA] Lộ trình hiện tại vẫn tối ưu ({safe_dist_str(old_cost)}), tiếp tục chạy.", (130, 225, 255))
+
+                        sim_state["dynamic_reroute_count"] = sim_state.get("dynamic_reroute_count", 0) + 1
+                        sim_state["state_label"] = STATE_DISPATCHING
 
         # =====================================================================
         # 3. VẼ GIAO DIỆN (RENDER)
@@ -557,6 +703,12 @@ def run():
         # 3.6 Hiệu ứng Dijkstra & Tuyến Đường
         if sim_state["state_label"] == STATE_ROUTE_SEARCH:
             draw_dijkstra_trace(screen, city, fonts, sim_state, dijkstra_step_idx, dijkstra_step_timer, dijkstra_step_delay)
+        elif sim_state["state_label"] == STATE_DYNAMIC_REROUTE:
+            draw_committed_routes(screen, city, sim_state)
+            draw_dijkstra_trace(screen, city, fonts, sim_state, dijkstra_step_idx, dijkstra_step_timer, dynamic_dijkstra_step_delay)
+        elif sim_state["state_label"] == STATE_EARLY_WARNING:
+            draw_committed_routes(screen, city, sim_state)
+            draw_early_warning_indicator(screen, city, fonts, sim_state.get("warning_info"))
         elif sim_state["state_label"] in [STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED]:
             draw_committed_routes(screen, city, sim_state)
 

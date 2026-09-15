@@ -158,7 +158,7 @@ class TestPygameSmoke(unittest.TestCase):
             veh = EmergencyVehicle(len(vehicles) + 1, v_type, pinfo["path"], self.city.nodes, pinfo["station_id"], acc_id)
             vehicles.append(veh)
 
-        for _ in range(500):
+        for _ in range(1200):
             for v in vehicles:
                 v.update()
                 v.draw(self.screen, self.fonts)

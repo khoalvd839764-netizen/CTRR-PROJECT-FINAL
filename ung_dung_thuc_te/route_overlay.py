@@ -15,7 +15,8 @@ import pygame
 from ung_dung_thuc_te.config import (
     MAP_WIDTH, MAP_HEIGHT,
     COLOR_BFS_LEVELS, COLOR_MST_EDGE, COLOR_SHORTEST_PATH,
-    STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED
+    STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED,
+    STATE_EARLY_WARNING, STATE_DYNAMIC_REROUTE
 )
 from ung_dung_thuc_te.hud import safe_dist_str
 
@@ -240,9 +241,50 @@ def draw_bfs_waves(screen, city, fonts, sim_state, explored_layers):
             screen.blit(lvl_tag, (acc_pos[0] + r_dist - 18, acc_pos[1] - 7))
 
 
+def draw_early_warning_indicator(screen, city, fonts, warning_info):
+    """Vẽ hiệu ứng cảnh báo sớm kẹt xe: vòng tròn xung kích đỏ/vàng tại ngã rẽ và chớp đỏ trên đoạn kẹt."""
+    if not warning_info:
+        return
+    u = warning_info.get("node_id")
+    v = warning_info.get("next_node_id")
+    if u is None or u not in city.nodes:
+        return
+
+    u_pos = city.nodes[u]["pos"]
+    ticks = pygame.time.get_ticks()
+
+    # 1. Vẽ chớp đỏ trên đoạn đường bị kẹt phía trước (u, v)
+    if v is not None and v in city.nodes:
+        v_pos = city.nodes[v]["pos"]
+        pulse_alpha = int(170 + math.sin(ticks * 0.02) * 75)
+        edge_surf = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
+        pygame.draw.line(edge_surf, (255, 50, 50, pulse_alpha), u_pos, v_pos, 8)
+        pygame.draw.line(edge_surf, (255, 220, 100, pulse_alpha), u_pos, v_pos, 3)
+        screen.blit(edge_surf, (0, 0))
+
+        # Huy hiệu cảnh báo giữa đoạn đường
+        mid_x = (u_pos[0] + v_pos[0]) // 2
+        mid_y = (u_pos[1] + v_pos[1]) // 2
+        jam_tag = fonts["tiny"].render("⚠️ KẸT NẶNG (x3.5)", True, (255, 230, 230))
+        tag_box = pygame.Rect(mid_x - jam_tag.get_width() // 2 - 4, mid_y - 8, jam_tag.get_width() + 8, 16)
+        pygame.draw.rect(screen, (120, 20, 20), tag_box, border_radius=4)
+        pygame.draw.rect(screen, (255, 80, 80), tag_box, 1, border_radius=4)
+        screen.blit(jam_tag, (tag_box.x + 4, tag_box.y + 1))
+
+    # 2. Vòng tròn cảnh báo đỏ lan tỏa tại nút ngã rẽ u
+    pulse_r = int(14 + (ticks % 600) / 600.0 * 24)
+    wave_surf = pygame.Surface((pulse_r * 2 + 6, pulse_r * 2 + 6), pygame.SRCALPHA)
+    alpha_w = int(220 * (1.0 - (pulse_r - 14) / 24.0))
+    pygame.draw.circle(wave_surf, (255, 60, 40, alpha_w), (pulse_r + 3, pulse_r + 3), pulse_r, 3)
+    screen.blit(wave_surf, (u_pos[0] - pulse_r - 3, u_pos[1] - pulse_r - 3))
+
+
 def draw_tactical_banner(screen, fonts, sim_state, candidate_phase, path_locked_timer, dijkstra_step_idx, map_width):
     """Vẽ banner điều phối tác chiến ở đầu bản đồ."""
-    if sim_state["state_label"] not in [STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING, STATE_RESOLVED]:
+    if sim_state["state_label"] not in [
+        STATE_ROUTE_SEARCH, STATE_PATH_LOCKED, STATE_DISPATCHING,
+        STATE_RESOLVED, STATE_EARLY_WARNING, STATE_DYNAMIC_REROUTE
+    ]:
         return
 
     b_w = map_width - 28
@@ -254,7 +296,12 @@ def draw_tactical_banner(screen, fonts, sim_state, candidate_phase, path_locked_
     b_surf.fill((14, 22, 38, 245))
     screen.blit(b_surf, (14, 8))
 
-    if sim_state["state_label"] == STATE_ROUTE_SEARCH:
+    if sim_state["state_label"] == STATE_EARLY_WARNING:
+        pulse_r = int(220 + math.sin(pygame.time.get_ticks() * 0.02) * 35)
+        b_border_col = (pulse_r, 80, 50)
+    elif sim_state["state_label"] == STATE_DYNAMIC_REROUTE:
+        b_border_col = (255, 215, 0)
+    elif sim_state["state_label"] == STATE_ROUTE_SEARCH:
         b_border_col = (255, 225, 50) if candidate_phase == 0 else (255, 195, 45)
     elif sim_state["state_label"] == STATE_PATH_LOCKED:
         b_border_col = (50, 255, 180)
@@ -262,7 +309,7 @@ def draw_tactical_banner(screen, fonts, sim_state, candidate_phase, path_locked_
         b_border_col = (50, 255, 140)
     else:
         b_border_col = (0, 240, 220)
-    pygame.draw.rect(screen, b_border_col, banner_rect, 2 if is_locked_phase else 1, border_radius=6)
+    pygame.draw.rect(screen, b_border_col, banner_rect, 2 if (is_locked_phase or sim_state["state_label"] == STATE_EARLY_WARNING) else 1, border_radius=6)
 
     cost_val = sim_state.get("route_cost", 0)
     km_str = safe_dist_str(cost_val)
@@ -330,7 +377,47 @@ def draw_tactical_banner(screen, fonts, sim_state, candidate_phase, path_locked_
         pygame.draw.rect(screen, (50, 255, 180), (16, bar_y, int((b_w - 4) * prog), 3), border_radius=2)
 
     else:
-        if sim_state["state_label"] == STATE_ROUTE_SEARCH:
+        if sim_state["state_label"] == STATE_EARLY_WARNING:
+            w_info = sim_state.get("warning_info", {})
+            st_name = w_info.get("street", "Đoạn đường phía trước")
+            n_code = w_info.get("node_code", "Ngã rẽ")
+            t_head = fonts["small"].render(
+                f"⚠️ [CẢNH BÁO SỚM]: PHÁT HIỆN ÙN TẮC ĐỘT XUẤT TẠI {st_name.upper()}!",
+                True, (255, 110, 70)
+            )
+            t_sub = fonts["tiny"].render(
+                f"• Xe tạm dừng tại ngã ba [{n_code}] | Chuẩn bị kích hoạt Dijkstra tăng tốc tìm đường né tắc...",
+                True, (235, 245, 255)
+            )
+        elif sim_state["state_label"] == STATE_DYNAMIC_REROUTE:
+            dijkstra_steps = sim_state.get("dijkstra_trace_steps", [])
+            total_steps = max(1, len(dijkstra_steps))
+            curr_idx = min(dijkstra_step_idx, total_steps - 1)
+            w_info = sim_state.get("warning_info", {})
+            n_code = w_info.get("node_code", "")
+            if dijkstra_steps and curr_idx < len(dijkstra_steps):
+                step_data = dijkstra_steps[curr_idx]
+                u_code = step_data["u_code"]
+                u_dist_str = safe_dist_str(step_data["u_dist"])
+                rel_count = len(step_data.get("relaxations", []))
+                t_head = fonts["small"].render(
+                    f"⚡ [DYNAMIC DIJKSTRA TĂNG TỐC]: BƯỚC [{curr_idx+1}/{total_steps}] - Chốt [{u_code}] (d = {u_dist_str}) -> Khảo sát {rel_count} nhánh rẽ",
+                    True, (255, 225, 50)
+                )
+                t_sub = fonts["tiny"].render(
+                    f"• Đang quét nới lỏng cạnh kề tốc độ cao từ ngã ba [{n_code}] né tắc về hướng {sim_state['accident_name'][:22]}",
+                    True, (215, 245, 255)
+                )
+            else:
+                t_head = fonts["small"].render(
+                    "DIJKSTRA HOÀN TẤT: ĐÃ TÌM RA TUYẾN NÉ TẮC MỚI!",
+                    True, (50, 255, 180)
+                )
+                t_sub = fonts["tiny"].render(
+                    "• Đang thực hiện bẻ lái và cập nhật lộ trình tối ưu cho phương tiện...",
+                    True, (200, 255, 230)
+                )
+        elif sim_state["state_label"] == STATE_ROUTE_SEARCH:
             dijkstra_steps = sim_state.get("dijkstra_trace_steps", [])
             total_steps = max(1, len(dijkstra_steps))
             curr_idx = min(dijkstra_step_idx, total_steps - 1)

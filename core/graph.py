@@ -7,30 +7,39 @@ from core.converter import (
 
 
 class Graph:
-    def __init__(self, n=0, directed=False, weighted=False, pos=None):
+    def __init__(self, n=0, directed=False, weighted=False, pos=None, labels=None, curvatures=None, weight_positions=None):
         self.n = n
         self.directed = directed
         self.weighted = weighted
         self.pos = pos
+        self.labels = labels
+        self.curvatures = curvatures
+        self.weight_positions = weight_positions
         
         self.matrix = [[0] * n for _ in range(n)]
         self.adj = {i: [] for i in range(n)}
         self.edges = []
 
-    def from_matrix(self, matrix, pos=None):
+    def from_matrix(self, matrix, pos=None, labels=None, curvatures=None, weight_positions=None):
         self.n = len(matrix)
         self.matrix = matrix
         self.adj = matrix_to_adj(matrix, self.directed)
         self.edges = matrix_to_edges(matrix, self.directed)
         if pos is not None:
             self.pos = pos
+        if labels is not None:
+            self.labels = labels
+        if curvatures is not None:
+            self.curvatures = curvatures
+        if weight_positions is not None:
+            self.weight_positions = weight_positions
         return self
 
-    def from_edges(self, edges, n=None, pos=None):
-        if n is None:
-            max_v = -1
-            for edge in edges:
-                max_v = max(max_v, edge[0], edge[1])
+    def from_edges(self, edges, n=None, pos=None, labels=None, curvatures=None, weight_positions=None):
+        max_v = -1
+        for edge in edges:
+            max_v = max(max_v, edge[0], edge[1])
+        if n is None or n <= max_v:
             self.n = max_v + 1
         else:
             self.n = n
@@ -40,6 +49,12 @@ class Graph:
         self.adj = edges_to_adj(edges, self.n, self.directed)
         if pos is not None:
             self.pos = pos
+        if labels is not None:
+            self.labels = labels
+        if curvatures is not None:
+            self.curvatures = curvatures
+        if weight_positions is not None:
+            self.weight_positions = weight_positions
         return self
 
     def from_text(self, text):

@@ -7,6 +7,7 @@ import unittest
 from ung_dung_thuc_te.city_graph import CityTrafficGraph
 from ung_dung_thuc_te.dispatcher import EmergencyDispatcher
 from ung_dung_thuc_te.router import DijkstraRouter
+from ung_dung_thuc_te.vehicle import EmergencyVehicle
 from core.mst import kruskal
 
 
@@ -142,7 +143,44 @@ class TestEmergencyDispatch(unittest.TestCase):
         self.assertIn("layers_timeline", res)
         self.assertGreater(len(res["layers_timeline"]), 1)
 
+    def test_fluctuate_traffic_near_node(self):
+        """Kiểm tra mô phỏng biến động giao thông động xung quanh nút."""
+        # Chọn cạnh (0, 1) là đường Điện Biên Phủ
+        events = self.city.fluctuate_traffic_near_node(0, chance_next_jam=1.0, next_node=1)
+        self.assertGreaterEqual(len(events), 1)
+        self.assertEqual(self.city.congestion[(0, 1)], 3.5)
+        # Đoạn (1, 0) cũng phải được đồng bộ nếu là đường hai chiều
+        self.assertEqual(self.city.congestion[(1, 0)], 3.5)
+
+    def test_early_warning_and_dynamic_reroute_trace(self):
+        """Kiểm tra chu trình cảnh báo sớm kẹt xe và tạo bước quét Dijkstra tăng tốc từ ngã rẽ."""
+        from ung_dung_thuc_te.config import STATE_EARLY_WARNING, STATE_DYNAMIC_REROUTE
+        self.assertTrue(isinstance(STATE_EARLY_WARNING, str))
+        self.assertTrue(isinstance(STATE_DYNAMIC_REROUTE, str))
+
+        # Giả lập xe đang chạy trên tuyến [0, 1, 4, 5] và vừa tới nút 1
+        veh = EmergencyVehicle(1, "AMBULANCE", [0, 1, 4, 5], self.city.nodes, 0, 5)
+        veh.path_index = 1
+        
+        # Ngã rẽ 1 gặp kẹt xe trên đoạn (1, 4)
+        self.city.congestion[(1, 4)] = 3.5
+        self.city.congestion[(4, 1)] = 3.5
+
+        # Quét Dijkstra từ nút 1 đến đích 5
+        trace_res = self.router.compute_route_with_trace(1, 5)
+        self.assertTrue(trace_res["success"])
+        self.assertGreater(len(trace_res["ctrr_steps"]), 0)
+        
+        # Bẻ lái từ nút 1
+        new_path = trace_res["path"]
+        veh.reroute_from_current(new_path)
+        self.assertEqual(veh.path[0], 0)
+        self.assertEqual(veh.path[1], 1)
+        self.assertEqual(veh.path[-1], 5)
+        self.assertEqual(veh.pulse_timer, 36)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

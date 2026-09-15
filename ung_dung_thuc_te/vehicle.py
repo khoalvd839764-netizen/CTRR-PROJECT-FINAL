@@ -24,26 +24,30 @@ class EmergencyVehicle:
         self.x = float(start_pos[0])
         self.y = float(start_pos[1])
         
-        self.speed = 3.8  # Tốc độ di chuyển (pixel/frame)
+        self.speed = 1.9  # Tốc độ di chuyển chậm, quan sát rõ (pixel/frame)
         self.angle = 0.0
         self.active = True
         self.arrived = False
         
         self.siren_tick = 0
         self.trail = []   # Lưu vết vệt sáng đuôi xe
+        self.pulse_timer = 0  # Hiệu ứng radar ping khi tái định tuyến
 
     def update(self):
-        """Cập nhật vị trí di chuyển theo lộ trình từng frame."""
+        """Cập nhật vị trí di chuyển theo lộ trình từng frame. Trả về node_id nếu vừa chạm tới một nút giao mới."""
         if not self.active or self.arrived:
-            return
+            return None
 
         self.siren_tick += 1
+        if self.pulse_timer > 0:
+            self.pulse_timer -= 1
 
         # Lưu lại vị trí để vẽ trail đuôi xe
         self.trail.append((self.x, self.y))
-        if len(self.trail) > 12:
+        if len(self.trail) > 16:
             self.trail.pop(0)
 
+        reached_node = None
         # Kiểm tra mục tiêu tiếp theo trên lộ trình
         if self.path_index < len(self.path) - 1:
             next_node_id = self.path[self.path_index + 1]
@@ -61,6 +65,7 @@ class EmergencyVehicle:
                 self.x = float(target_x)
                 self.y = float(target_y)
                 self.path_index += 1
+                reached_node = next_node_id
                 
                 # Nếu đã tới điểm cuối của lộ trình
                 if self.path_index >= len(self.path) - 1:
@@ -69,6 +74,16 @@ class EmergencyVehicle:
                 # Di chuyển tịnh tiến mượt mà
                 self.x += (dx / dist) * self.speed
                 self.y += (dy / dist) * self.speed
+
+        return reached_node
+
+    def reroute_from_current(self, new_remaining_path):
+        """Cập nhật lộ trình mới nối tiếp từ nút hiện tại của xe."""
+        if new_remaining_path and len(new_remaining_path) >= 1:
+            curr_idx = self.path_index
+            self.path = self.path[:curr_idx] + list(new_remaining_path)
+            self.path_index = curr_idx
+            self.pulse_timer = 36
 
     def reroute(self, new_path):
         """Cập nhật lộ trình mới khi phát hiện sự cố kẹt xe phía trước."""
@@ -148,6 +163,15 @@ class EmergencyVehicle:
         glow_color = (255, 40, 40, 50) if siren_flash == 0 else (30, 140, 255, 50)
         pygame.draw.circle(glow_surf, glow_color, (glow_radius, glow_radius), glow_radius)
         surface.blit(glow_surf, (int(self.x) - glow_radius, int(self.y) - glow_radius))
+
+        # 4.1 Sóng Radar Pulse khi xe vừa tái định tuyến (Re-route)
+        if self.pulse_timer > 0:
+            pulse_rad = int(14 + (36 - self.pulse_timer) * 1.8)
+            alpha = int(240 * (self.pulse_timer / 36))
+            radar_surf = pygame.Surface((pulse_rad * 2 + 6, pulse_rad * 2 + 6), pygame.SRCALPHA)
+            pygame.draw.circle(radar_surf, (255, 215, 0, alpha), (pulse_rad + 3, pulse_rad + 3), pulse_rad, 2)
+            pygame.draw.circle(radar_surf, (255, 255, 255, alpha // 2), (pulse_rad + 3, pulse_rad + 3), max(1, pulse_rad - 6), 1)
+            surface.blit(radar_surf, (int(self.x) - pulse_rad - 3, int(self.y) - pulse_rad - 3))
 
         # 5. Nhãn loại xe phía trên
         label_text = "BV 115" if self.type == "AMBULANCE" else "PCCC"
